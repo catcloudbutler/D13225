@@ -1,3 +1,23 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>거리순 재고 검색 시스템</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; margin: 20px; background-color: #f4f6f9; color: #333; }
+        h1 { color: #2c3e50; font-size: 24px; margin-bottom: 20px; }
+        .search-box { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        
+        .search-row { margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 15px; }
+        .input-group { display: flex; flex-direction: column; }
+        
+        label { font-size: 13px; color: #7f8c8d; margin-bottom: 5px; font-weight: bold; }
+        input, select { padding: 10px; width: 220px; border: 1px solid #ccd1d9; border-radius: 6px; font-size: 14px; box-sizing: border-box; background-color: #fff; }
+        input:focus, select:focus { border-color: #3498db; outline: none; }
+
+
 import streamlit as st
 import pandas as pd
 
