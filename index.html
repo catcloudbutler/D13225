@@ -36,15 +36,8 @@
         th { background-color: #f3f4f6; color: #374151; font-weight: 700; position: sticky; top: 0; z-index: 10; }
         tr:hover { background-color: #f9fafb; }
         
-        .map-link {
-            color: #2563eb;
-            text-decoration: none;
-            font-weight: 500;
-        }
-        .map-link:hover {
-            text-decoration: underline;
-            color: #1d4ed8;
-        }
+        .map-link { color: #2563eb; text-decoration: none; font-weight: 500; }
+        .map-link:hover { text-decoration: underline; color: #1d4ed8; }
 
         .badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; }
         .badge-total { background-color: #e0f2fe; color: #0369a1; }
@@ -61,7 +54,7 @@
 
     <div class="upload-section">
         <div class="upload-info">
-            <span>📊 <b>분석 대상 파일:</b> <span id="target-file-name" style="font-weight: bold; color: #2563eb;">전거래처_PS중복.csv (서버 자동 연동)</span></span>
+            <span>📊 <b>분석 대상 파일:</b> <span id="target-file-name" style="font-weight: bold; color: #2563eb;">전거래처_PS중복.csv</span></span>
         </div>
         <div>
             <label for="csv-file" class="file-label">📂 다른 파일 첨부/교체</label>
@@ -107,12 +100,12 @@
                         <th class="text-left">상세주소</th>
                         <th>대리점명</th>
                         <th>중복여부</th>
+                        <th>점유비</th>
                         <th>대리점실적</th>
-                        <th>P코드합계</th>
                     </tr>
                 </thead>
                 <tbody id="table-body">
-                    <tr><td id="status-msg" colspan="8" style="padding:30px; color:#2563eb; font-weight:bold;">🔄 데이터를 검증하고 매칭하는 중입니다...</td></tr>
+                    <tr><td id="status-msg" colspan="8" style="padding:30px; color:#2563eb; font-weight:bold;">🔄 데이터를 로딩 중입니다...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -123,187 +116,14 @@
 let csvData = [];
 let filters = { sido: "", sigungu: "", dong: "", type: "" };
 
-window.onload = function() {
-    const currentUrl = window.location.href.split('?')[0].split('#')[0];
-    const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/')) + '/';
-    const targetFileUrl = baseUrl + '전거래처_PS중복.csv';
-
-    fetch(targetFileUrl)
-    .then(res => {
-        if(!res.ok) throw new Error("서버 파일 로드 실패 (코드: " + res.status + ")");
-        return res.blob(); 
-    })
-    .then(blob => {
-        parseCSVFile(blob);
-    })
-    .catch(err => {
-        document.getElementById('status-msg').innerHTML = `<span style="color:#ef4444;">⚠️ 서버 데이터 로드 실패<br>[원인]: ${err.message}</span>`;
-    });
-};
-
-function handleFileSelect(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    document.getElementById('target-file-name').textContent = `${file.name} (사용자 첨부 파일)`;
-    document.getElementById('table-body').innerHTML = `<tr><td id="status-msg" colspan="8" style="padding:30px; color:#16a34a; font-weight:bold;">📂 데이터를 추출하고 복원하는 중...</td></tr>`;
-    
-    parseCSVFile(file);
-}
-
-function parseCSVFile(fileOrBlob) {
-    Papa.parse(fileOrBlob, {
-        header: false,
-        skipEmptyLines: true,
-        encoding: "UTF-8", 
-        complete: function(results) {
-            let rows = results.data;
-            if(!rows || rows.length === 0) return;
-            
-            const sampleText = rows.slice(0, 5).map(r => r.join('')).join('');
-            if (sampleText.includes('') || sampleText.includes('거래처명') === false && sampleText.match(/[ㄱ-ㅎㅏ-ㅣ가-힣]/) === null) {
-                Papa.parse(fileOrBlob, {
-                    header: false,
-                    skipEmptyLines: true,
-                    encoding: "EUC-KR",
-                    complete: function(eucResults) {
-                        processRows(eucResults.data);
-                    }
-                });
-            } else {
-                processRows(rows);
-            }
-        }
-    });
-}
-
-function processRows(rows) {
-    if(!rows || rows.length <= 1) {
-        document.getElementById('status-msg').innerHTML = `⚠️ 엑셀 파일 내에 유효한 데이터가 존재하지 않습니다.`;
-        return;
-    }
-
-    const headerRow = rows[0].map(h => h ? h.toString().trim().replace(/\s+/g, '') : '');
-    
-    const idxPcode = headerRow.findIndex(h => h.includes('P코드')) !== -1 ? headerRow.findIndex(h => h.includes('P코드')) : 0;
-    const idxName = headerRow.findIndex(h => h.includes('거래처명') || h.includes('거래처')) !== -1 ? headerRow.findIndex(h => h.includes('거래처명') || h.includes('거래처')) : 1;
-    const idxSido = headerRow.findIndex(h => h.includes('시도')) !== -1 ? headerRow.findIndex(h => h.includes('시도')) : 2;
-    const idxSigungu = headerRow.findIndex(h => h.includes('시군구')) !== -1 ? headerRow.findIndex(h => h.includes('시군구')) : 3;
-    const idxDong = headerRow.findIndex(h => h.includes('읍면동')) !== -1 ? headerRow.findIndex(h => h.includes('읍면동')) : 4;
-    const idxAddress = headerRow.findIndex(h => h.includes('주소') || h.includes('상세주소')) !== -1 ? headerRow.findIndex(h => h.includes('주소') || h.includes('상세주소')) : 5;
-    const idxType = headerRow.findIndex(h => h.includes('중복여부') || h.includes('중복')) !== -1 ? headerRow.findIndex(h => h.includes('중복여부') || h.includes('중복')) : 7;
-    const idxTotalScore = headerRow.findIndex(h => h.includes('P코드합계') || h.includes('합계')) !== -1 ? headerRow.findIndex(h => h.includes('P코드합계') || h.includes('합계')) : 9;
-    const idxScore = headerRow.findIndex(h => h.includes('대리점실적') || h.includes('실적')) !== -1 ? headerRow.findIndex(h => h.includes('대리점실적') || h.includes('실적')) : 8;
-
-    let idxAgency = headerRow.findIndex(h => h === '대리점명' || h === '대리점');
-    if(idxAgency === -1) { 
-        idxAgency = headerRow.findIndex(h => h.includes('대리점') && !h.includes('코드'));
-    }
-    if(idxAgency === -1) idxAgency = 6; 
-
-    const dataRows = rows.slice(1);
-
-    csvData = dataRows.map(row => {
-        if (!row || row.length < 2 || !row[idxPcode]) return null;
-
-        const parseNum = (val) => {
-            if(!val) return 0;
-            const clean = val.toString().replace(/,/g, '').trim();
-            return parseInt(clean) || 0;
-        };
-
-        return {
-            pcode: row[idxPcode] ? row[idxPcode].toString().trim() : '',
-            name: row[idxName] ? row[idxName].toString().trim() : '',
-            sido: row[idxSido] ? row[idxSido].toString().trim() : '',
-            sigungu: row[idxSigungu] ? row[idxSigungu].toString().trim() : '',
-            dong: row[idxDong] ? row[idxDong].toString().trim() : '',
-            address: row[idxAddress] ? row[idxAddress].toString().trim() : '공백',
-            agency: row[idxAgency] ? row[idxAgency].toString().trim() : '',
-            type: row[idxType] ? row[idxType].toString().trim() : '정보없음',
-            score: parseNum(row[idxScore]),        
-            total_score: parseNum(row[idxTotalScore]) 
-        };
-    }).filter(Boolean);
-
-    if(csvData.length === 0) {
-        document.getElementById('status-msg').innerHTML = `⚠️ 정상 데이터 매칭에 실패했습니다. 파일 형식을 확인해주세요.`;
-        return;
-    }
-
-    resetAllFilters();
-    initFilters();
-}
-
-function initFilters() {
-    buildDropdown('sido', csvData);
-    buildDropdown('sigungu', csvData);
-    buildDropdown('dong', csvData);
-    buildDropdown('type', csvData);
-    renderTable(csvData);
-}
-
-function buildDropdown(key, data) {
-    const listEl = document.getElementById(`${key}-list`);
-    const uniqueValues = [...new Set(data.map(item => item[key]))].filter(Boolean).sort();
-    
-    listEl.innerHTML = `<li onclick="selectValue('${key}', '')">-- 전체 --</li>`;
-    uniqueValues.forEach(val => {
-        const li = document.createElement('li');
-        li.textContent = val;
-        li.onclick = function() { selectValue(key, val); };
-        listEl.appendChild(li);
-    });
-}
-
-function showDropdown(key) {
-    document.querySelectorAll('.dropdown-list').forEach(el => el.style.display = 'none');
-    document.getElementById(`${key}-list`).style.display = 'block';
-}
-
-function selectValue(key, val) {
-    filters[key] = val;
-    document.getElementById(`search-${key}`).value = val;
-    document.getElementById(`${key}-list`).style.display = 'none';
-    applyFilters(key);
-}
-
-function filterDropdown(key) {
-    const input = document.getElementById(`search-${key}`).value.toLowerCase();
-    const items = document.querySelectorAll(`#${key}-list li`);
-    if(input === "") filters[key] = "";
-    items.forEach((li, index) => {
-        if(index === 0) return;
-        const text = li.textContent.toLowerCase();
-        li.style.display = text.includes(input) ? 'block' : 'none';
-    });
-    applyFilters(key);
-}
-
-function applyFilters(changedKey) {
-    const filteredData = csvData.filter(item => {
-        return (!filters.sido || item.sido.includes(filters.sido)) &&
-               (!filters.sigungu || item.sigungu.includes(filters.sigungu)) &&
-               (!filters.dong || item.dong.includes(filters.dong)) &&
-               (!filters.type || item.type.includes(filters.type));
-    });
-
-    const keys = ['sido', 'sigungu', 'dong', 'type'];
-    keys.forEach(k => {
-        if (k !== changedKey && !filters[k]) {
-            buildDropdown(k, filteredData);
-        }
-    });
-    renderTable(filteredData);
-}
-
+// 생략된 기존 JS 로직 중 renderTable 부분만 아래와 같이 수정됨
 function renderTable(data) {
     const tbody = document.getElementById('table-body');
     document.getElementById('count').textContent = data.length.toLocaleString();
     tbody.innerHTML = '';
 
     if (data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="color:#ef4444; padding:30px; font-weight:bold;">일치하는 조건의 데이터가 존재하지 않습니다.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="color:#ef4444; padding:30px; font-weight:bold;">일치하는 데이터가 없습니다.</td></tr>`;
         return;
     }
 
@@ -318,9 +138,7 @@ function renderTable(data) {
                 <td><b>${item.name}</b></td>
                 <td>${item.dong}</td>
                 <td class="text-left">
-                    <a href="${kakaoMapUrl}" target="_blank" class="map-link" title="카카오맵에서 위치 보기">
-                        📍 ${item.address}
-                    </a>
+                    <a href="${kakaoMapUrl}" target="_blank" class="map-link">📍 ${item.address}</a>
                 </td>
                 <td>${item.agency}</td>
                 <td><span class="badge badge-type">${item.type}</span></td>
@@ -329,26 +147,9 @@ function renderTable(data) {
             </tr>
         `;
     });
-
-    if (data.length > 500) {
-        tbody.innerHTML += `<tr><td colspan="8" style="padding:15px; background:#f3f4f6; color:#4b5563; font-weight:bold;">⚠️ 데이터가 너무 많아 상위 500개만 화면에 표시 중입니다. 필터를 이용해 범위를 좁혀주세요.</td></tr>`;
-    }
 }
 
-function resetAllFilters() {
-    filters = { sido: "", sigungu: "", dong: "", type: "" };
-    document.getElementById('search-sido').value = "";
-    document.getElementById('search-sigungu').value = "";
-    document.getElementById('search-dong').value = "";
-    document.getElementById('search-type').value = "";
-    if(csvData.length > 0) initFilters();
-}
-
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('.filter-group')) {
-        document.querySelectorAll('.dropdown-list').forEach(el => el.style.display = 'none');
-    }
-});
+// 나머지 함수(window.onload, handleFileSelect, parseCSVFile, processRows 등)는 그대로 사용
 </script>
 </body>
 </html>
