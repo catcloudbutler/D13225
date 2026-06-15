@@ -19,6 +19,7 @@
         .file-label:hover { background-color: #15803d; }
         #csv-file { display: none; }
 
+        /* 필터 그리드 레이아웃 */
         .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; background: #f9fafb; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 25px; }
         .filter-group { display: flex; flex-direction: column; position: relative; }
         .filter-group label { font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #4b5563; }
@@ -30,6 +31,7 @@
         .btn-reset { padding: 10px; background-color: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; margin-top: auto; }
         .btn-reset:hover { background-color: #dc2626; }
 
+        /* 모바일 스크롤 및 테이블 깨짐 방지 최적화 */
         .table-container { 
             overflow-x: auto; 
             border: 1px solid #e5e7eb; 
@@ -58,16 +60,19 @@
         th { background-color: #f3f4f6; color: #374151; font-weight: 700; position: sticky; top: 0; z-index: 10; }
         tr:hover { background-color: #f9fafb; }
         
+        /* 각 열별 최소 너비 설정 */
         th:nth-child(1), td:nth-child(1) { min-width: 80px; }  
         th:nth-child(2), td:nth-child(2) { min-width: 130px; white-space: normal; word-break: keep-all; } 
         th:nth-child(3), td:nth-child(3) { min-width: 80px; }  
-        th:nth-child(4), td:nth-child(4) { min-width: 250px; white-space: normal; word-break: keep-all; } 
-        th:nth-child(5), td:nth-child(5) { min-width: 120px; white-space: normal; word-break: keep-all; } 
-        th:nth-child(6), td:nth-child(6) { min-width: 90px; }  
-        th:nth-child(7), td:nth-child(7) { min-width: 90px; }  
+        th:nth-child(4), td:nth-child(4) { min-width: 80px; }  
+        th:nth-child(5), td:nth-child(5) { min-width: 80px; }  
+        th:nth-child(6), td:nth-child(6) { min-width: 250px; white-space: normal; word-break: keep-all; } 
+        th:nth-child(7), td:nth-child(7) { min-width: 120px; white-space: normal; word-break: keep-all; } 
         th:nth-child(8), td:nth-child(8) { min-width: 90px; }  
+        th:nth-child(9), td:nth-child(9) { min-width: 90px; }  
+        th:nth-child(10), td:nth-child(10) { min-width: 90px; }  
         
-        /* 🚀 카카오맵 링크 스타일 꾸미기 */
+        /* 카카오맵 링크 스타일 */
         .map-link {
             color: #2563eb;
             text-decoration: none;
@@ -108,9 +113,9 @@
 
     <div class="filter-grid">
         <div class="filter-group">
-            <label>거래처명 검색</label>
-            <input type="text" id="search-name" class="search-input" placeholder="🔍 거래처명 입력" onfocus="showDropdown('name')" oninput="filterDropdown('name')" autocomplete="off">
-            <ul id="name-list" class="dropdown-list"></ul>
+            <label>시도명 검색</label>
+            <input type="text" id="search-sido" class="search-input" placeholder="🔍 시도명 입력" onfocus="showDropdown('sido')" oninput="filterDropdown('sido')" autocomplete="off">
+            <ul id="sido-list" class="dropdown-list"></ul>
         </div>
         <div class="filter-group">
             <label>시군구명 검색</label>
@@ -118,8 +123,8 @@
             <ul id="sigungu-list" class="dropdown-list"></ul>
         </div>
         <div class="filter-group">
-            <label>읍면동명 검색</label>
-            <input type="text" id="search-dong" class="search-input" placeholder="🔍 읍면동명 입력" onfocus="showDropdown('dong')" oninput="filterDropdown('dong')" autocomplete="off">
+            <label>읍면동 검색</label>
+            <input type="text" id="search-dong" class="search-input" placeholder="🔍 읍면동 입력" onfocus="showDropdown('dong')" oninput="filterDropdown('dong')" autocomplete="off">
             <ul id="dong-list" class="dropdown-list"></ul>
         </div>
         <div class="filter-group">
@@ -141,6 +146,8 @@
                     <tr>
                         <th>P코드</th>
                         <th>거래처명</th>
+                        <th>시도</th>
+                        <th>시군구</th>
                         <th>읍면동</th>
                         <th class="text-left">상세주소</th>
                         <th>대리점명</th>
@@ -150,7 +157,7 @@
                     </tr>
                 </thead>
                 <tbody id="table-body">
-                    <tr><td id="status-msg" colspan="8" style="padding:30px; color:#2563eb; font-weight:bold;">🔄 데이터를 검증하고 매칭하는 중입니다...</td></tr>
+                    <tr><td id="status-msg" colspan="10" style="padding:30px; color:#2563eb; font-weight:bold;">🔄 데이터를 검증하고 매칭하는 중입니다...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -159,7 +166,8 @@
 
 <script>
 let csvData = [];
-let filters = { name: "", sigungu: "", dong: "", type: "" };
+// [수정] 내부 필터 상태 변수 구조 정의
+let filters = { sido: "", sigungu: "", dong: "", type: "" };
 
 window.onload = function() {
     const currentUrl = window.location.href.split('?')[0].split('#')[0];
@@ -184,7 +192,7 @@ function handleFileSelect(event) {
     if (!file) return;
 
     document.getElementById('target-file-name').textContent = `${file.name} (사용자 첨부 파일)`;
-    document.getElementById('table-body').innerHTML = `<tr><td id="status-msg" colspan="8" style="padding:30px; color:#16a34a; font-weight:bold;">📂 데이터를 추출하고 복원하는 중...</td></tr>`;
+    document.getElementById('table-body').innerHTML = `<tr><td id="status-msg" colspan="10" style="padding:30px; color:#16a34a; font-weight:bold;">📂 데이터를 추출하고 복원하는 중...</td></tr>`;
     
     parseCSVFile(file);
 }
@@ -274,8 +282,9 @@ function processRows(rows) {
     initFilters();
 }
 
+// [수정] 4가지 필터 대상 초기화 실행
 function initFilters() {
-    buildDropdown('name', csvData);
+    buildDropdown('sido', csvData);
     buildDropdown('sigungu', csvData);
     buildDropdown('dong', csvData);
     buildDropdown('type', csvData);
@@ -322,15 +331,16 @@ function filterDropdown(key) {
     applyFilters(key);
 }
 
+// [수정] 복합 필터 조건 수식 수정 (시도, 시군구, 읍면동, 중복여부 매칭)
 function applyFilters(changedKey) {
     const filteredData = csvData.filter(item => {
-        return (!filters.name || item.name.includes(filters.name)) &&
+        return (!filters.sido || item.sido.includes(filters.sido)) &&
                (!filters.sigungu || item.sigungu.includes(filters.sigungu)) &&
                (!filters.dong || item.dong.includes(filters.dong)) &&
                (!filters.type || item.type.includes(filters.type));
     });
 
-    const keys = ['name', 'sigungu', 'dong', 'type'];
+    const keys = ['sido', 'sigungu', 'dong', 'type'];
     keys.forEach(k => {
         if (k !== changedKey && !filters[k]) {
             buildDropdown(k, filteredData);
@@ -345,23 +355,21 @@ function renderTable(data) {
     tbody.innerHTML = '';
 
     if (data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="color:#ef4444; padding:30px; font-weight:bold;">일치하는 조건의 데이터가 존재하지 않습니다.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="color:#ef4444; padding:30px; font-weight:bold;">일치하는 조건의 데이터가 존재하지 않습니다.</td></tr>`;
         return;
     }
 
     const limitData = data.slice(0, 500); 
     limitData.forEach(item => {
-        // 🚀 [핵심 수정] 검색용 전체 주소 문자열을 조합합니다. (시도 + 시군구 + 상세주소)
-        // 주소 데이터가 깨졌거나 공백인 상황을 대비해 안전하게 fallback 처리합니다.
         const fullAddress = `${item.sido} ${item.sigungu} ${item.address}`.trim();
-        
-        // 카카오맵 검색 연동 URL 생성 (인코딩 처리 포함)
         const kakaoMapUrl = `https://map.kakao.com/link/search/${encodeURIComponent(fullAddress)}`;
 
         tbody.innerHTML += `
             <tr>
                 <td><b>${item.pcode}</b></td>
                 <td class="text-left"><b>${item.name}</b></td>
+                <td>${item.sido}</td>
+                <td>${item.sigungu}</td>
                 <td>${item.dong}</td>
                 <td class="text-left">
                     <a href="${kakaoMapUrl}" target="_blank" class="map-link" title="카카오맵에서 위치 보기">
@@ -377,13 +385,14 @@ function renderTable(data) {
     });
 
     if (data.length > 500) {
-        tbody.innerHTML += `<tr><td colspan="8" style="padding:15px; background:#f3f4f6; color:#4b5563; font-weight:bold;">⚠️ 데이터가 너무 많아 상위 500개만 화면에 표시 중입니다. 필터를 이용해 범위를 좁혀주세요.</td></tr>`;
+        tbody.innerHTML += `<tr><td colspan="10" style="padding:15px; background:#f3f4f6; color:#4b5563; font-weight:bold;">⚠️ 데이터가 너무 많아 상위 500개만 화면에 표시 중입니다. 필터를 이용해 범위를 좁혀주세요.</td></tr>`;
     }
 }
 
+// [수정] 4가지 타겟 필터 인풋 클리어 처리
 function resetAllFilters() {
-    filters = { name: "", sigungu: "", dong: "", type: "" };
-    document.getElementById('search-name').value = "";
+    filters = { sido: "", sigungu: "", dong: "", type: "" };
+    document.getElementById('search-sido').value = "";
     document.getElementById('search-sigungu').value = "";
     document.getElementById('search-dong').value = "";
     document.getElementById('search-type').value = "";
