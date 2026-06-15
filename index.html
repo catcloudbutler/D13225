@@ -104,7 +104,7 @@
                     </tr>
                 </thead>
                 <tbody id="table-body">
-                    <tr><td id="status-msg" colspan="10" style="padding:30px; color:#2563eb; font-weight:bold;">🔄 한글 인코딩 및 열 순서를 매칭하는 중입니다...</td></tr>
+                    <tr><td id="status-msg" colspan="10" style="padding:30px; color:#2563eb; font-weight:bold;">🔄 데이터를 검증하고 매칭하는 중입니다...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -138,7 +138,7 @@ function handleFileSelect(event) {
     if (!file) return;
 
     document.getElementById('target-file-name').textContent = `${file.name} (사용자 첨부 파일)`;
-    document.getElementById('table-body').innerHTML = `<tr><td id="status-msg" colspan="10" style="padding:30px; color:#16a34a; font-weight:bold;">📂 깨짐 현상을 방지하며 글자를 복원하는 중...</td></tr>`;
+    document.getElementById('table-body').innerHTML = `<tr><td id="status-msg" colspan="10" style="padding:30px; color:#16a34a; font-weight:bold;">📂 데이터를 추출하고 복원하는 중...</td></tr>`;
     
     parseCSVFile(file);
 }
@@ -175,22 +175,26 @@ function processRows(rows) {
         return;
     }
 
-    // 첫 줄(헤더 제목줄) 공백 제거 및 텍스트 표준화
     const headerRow = rows[0].map(h => h ? h.toString().trim().replace(/\s+/g, '') : '');
     
-    // 🔍 각 데이터 열 위치 찾기 
+    // 🔍 각 데이터 열 위치 매칭
     const idxPcode = headerRow.findIndex(h => h.includes('P코드')) !== -1 ? headerRow.findIndex(h => h.includes('P코드')) : 0;
     const idxName = headerRow.findIndex(h => h.includes('거래처명') || h.includes('거래처')) !== -1 ? headerRow.findIndex(h => h.includes('거래처명') || h.includes('거래처')) : 1;
     const idxSido = headerRow.findIndex(h => h.includes('시도')) !== -1 ? headerRow.findIndex(h => h.includes('시도')) : 2;
     const idxSigungu = headerRow.findIndex(h => h.includes('시군구')) !== -1 ? headerRow.findIndex(h => h.includes('시군구')) : 3;
     const idxDong = headerRow.findIndex(h => h.includes('읍면동')) !== -1 ? headerRow.findIndex(h => h.includes('읍면동')) : 4;
     const idxAddress = headerRow.findIndex(h => h.includes('주소') || h.includes('상세주소')) !== -1 ? headerRow.findIndex(h => h.includes('주소') || h.includes('상세주소')) : 5;
-    const idxAgency = headerRow.findIndex(h => h.includes('대리점명') || h.includes('대리점')) !== -1 ? headerRow.findIndex(h => h.includes('대리점명') || h.includes('대리점')) : 6;
     const idxType = headerRow.findIndex(h => h.includes('중복여부') || h.includes('중복')) !== -1 ? headerRow.findIndex(h => h.includes('중복여부') || h.includes('중복')) : 7;
-    
-    // 🚀 [수정 핵심] 'P코드합계'와 '대리점실적' 순서로 매칭하여 정확한 인덱스를 탐색합니다.
     const idxTotalScore = headerRow.findIndex(h => h.includes('P코드합계') || h.includes('합계')) !== -1 ? headerRow.findIndex(h => h.includes('P코드합계') || h.includes('합계')) : 9;
     const idxScore = headerRow.findIndex(h => h.includes('대리점실적') || h.includes('실적')) !== -1 ? headerRow.findIndex(h => h.includes('대리점실적') || h.includes('실적')) : 8;
+
+    // 🚀 [해결 핵심] '대리점코드'와 오인되지 않도록 '대리점명'을 정확하게 매칭 (대리점코드가 들어오는 현상 방어)
+    let idxAgency = headerRow.findIndex(h => h === '대리점명' || h === '대리점');
+    if(idxAgency === -1) { 
+        // 완벽하게 일치하는 칸이 없을 경우, '코드'라는 단어가 포함되지 않은 '대리점' 글자 칸을 탐색
+        idxAgency = headerRow.findIndex(h => h.includes('대리점') && !h.includes('코드'));
+    }
+    if(idxAgency === -1) idxAgency = 6; // 끝까지 못 찾으면 기본 6번째 칸 지정
 
     const dataRows = rows.slice(1);
 
@@ -212,8 +216,8 @@ function processRows(rows) {
             address: row[idxAddress] ? row[idxAddress].toString().trim() : '공백',
             agency: row[idxAgency] ? row[idxAgency].toString().trim() : '',
             type: row[idxType] ? row[idxType].toString().trim() : '정보없음',
-            score: parseNum(row[idxScore]),        // 매칭된 대리점 실적 대입
-            total_score: parseNum(row[idxTotalScore]) // 매칭된 P코드 합계 대입
+            score: parseNum(row[idxScore]),        
+            total_score: parseNum(row[idxTotalScore]) 
         };
     }).filter(Boolean);
 
