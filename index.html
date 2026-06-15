@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>지역별 판매점 데이터 통합 복합 검색 필터 시스템</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
     <style>
         body { font-family: 'Malgun Gothic', sans-serif; padding: 20px; background-color: #f3f4f6; color: #1f2937; }
         .container { max-width: 1400px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
@@ -84,7 +87,7 @@
                     </tr>
                 </thead>
                 <tbody id="table-body">
-                    <tr><td id="status-msg" colspan="10" style="padding:30px; color:#2563eb; font-weight:bold;">🔄 깃허브 저장소 절대경로 계산 및 데이터 연동 중...</td></tr>
+                    <tr><td id="status-msg" colspan="10" style="padding:30px; color:#2563eb; font-weight:bold;">🔄 깃허브 저장소 연동 및 데이터 분석 중...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -92,28 +95,25 @@
 </div>
 
 <script>
-!function(e,t){"function"==typeof define&&define.amd?define([],t):"object"==typeof exports?module.exports=t():e.Papa=t()}(this,function(){"use strict";function e(e,t){var r=arguments.length>2&&void 0!==arguments[2]?arguments[2]:{};if("function"==typeof t&&(t={complete:t}),"object"!=typeof t&&(t={}),(t=Object.assign({},i,t)).beforeFirstChunk&&(e=t.beforeFirstChunk(e)),"string"==typeof e)return t.worker?new n(t).parse(e,r):new o(t).parse(e);if(e instanceof File||e instanceof Blob){if(t.worker)return new n(t).parse(e,r);var a=new o(t);return r.unpause=function(){a.resume()},a.parse(e)}return new o(t).parse(e)}var t="undefined"!=typeof window?window:"undefined"!=typeof global?global:"undefined"!=typeof self?self:{},i={delimiter:"",newline:"",quoteChar:'"',escapeChar:'"',header:!1,transformHeader:void 0,dynamicTyping:!1,preview:0,encoding:"EUC-KR",worker:!1,comments:!1,step:void 0,complete:void 0,error:void 0,download:!1,downloadRequest:void 0,skipEmptyLines:!1,chunk:void 0,fastMode:!1,beforeFirstChunk:void 0,transform:void 0,delimitersToGuess:[",","\t","|",";"]};function o(e){this._config=e,this._parser=null,this._stream=null,this._encoding=e.encoding,this._paused=!1}function n(e){this._config=e}return o.prototype.parse=function(e){if(e instanceof File||e instanceof Blob){var t=new FileReader;t.onload=function(r){var a=r.target.result;this._parser=new r(this._config),this._parser.parse(a)},t.readAsText(e,this._encoding)}else this._parser=new r(this._config),this._parser.parse(e)},o.prototype.resume=function(){this._paused=!1,this._stream&&this._stream.resume()},e});
-
 let csvData = [];
 let filters = { sido: "", sigungu: "", dong: "", type: "" };
 
 window.onload = function() {
-    // 🛠️ [보완 핵심] 현재 사이트 주소에서 'index.html'을 뺀 정확한 절대 파일 경로를 강제 계산
+    // 현재 주소를 기반으로 파일 절대경로 자동 계산
     const currentUrl = window.location.href.split('?')[0].split('#')[0];
     const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/')) + '/';
     const targetFileUrl = baseUrl + '전거래처_PS중복.csv';
 
-    console.log("데이터를 가져올 타겟 주소:", targetFileUrl);
-
     fetch(targetFileUrl)
     .then(res => {
-        if(!res.ok) throw new Error("서버에서 파일을 거부했거나 찾을 수 없습니다. (Status: " + res.status + ")");
+        if(!res.ok) throw new Error("서버에서 파일 연동을 거부했습니다. (오류 코드: " + res.status + ")");
         return res.arrayBuffer(); 
     })
     .then(buffer => {
         const decoder = new TextDecoder('euc-kr');
         const csvText = decoder.decode(buffer);
         
+        // 정식 탑재된 라이브러리로 분석 실행
         Papa.parse(csvText, {
             header: true,
             skipEmptyLines: true,
@@ -136,7 +136,7 @@ window.onload = function() {
         });
     })
     .catch(err => {
-        document.getElementById('status-msg').innerHTML = `<span style="color:#ef4444;">⚠️ 연동 실패: 파일명을 찾을 수 없습니다.<br>[상세 정보]: ${err.message}<br><br>💡 브라우저가 새 버전을 읽지 못했을 수 있으니 키보드의 [Ctrl + F5]를 눌러 강제 새로고침을 해주세요.</span>`;
+        document.getElementById('status-msg').innerHTML = `<span style="color:#ef4444;">⚠️ 연동 실패: 데이터를 가져오지 못했습니다.<br>[상세 정보]: ${err.message}<br><br>💡 주소창 뒤에 파일명을 직접 적었을 때 다운로드가 되는지 확인해 보시거나, 깃허브 저장소 첫 화면에 '전거래처_PS중복.csv'가 정확히 올라가 있는지 다시 봐주세요!</span>`;
     });
 };
 
