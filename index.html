@@ -104,7 +104,7 @@
                     </tr>
                 </thead>
                 <tbody id="table-body">
-                    <tr><td id="status-msg" colspan="10" style="padding:30px; color:#2563eb; font-weight:bold;">🔄 한글 인코딩을 분석하고 표를 생성하는 중입니다...</td></tr>
+                    <tr><td id="status-msg" colspan="10" style="padding:30px; color:#2563eb; font-weight:bold;">🔄 한글 인코딩 및 열 순서를 매칭하는 중입니다...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -120,7 +120,6 @@ window.onload = function() {
     const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/')) + '/';
     const targetFileUrl = baseUrl + '전거래처_PS중복.csv';
 
-    // 🚀 [해결 핵심] 서버 파일 로드 시 유효한 한글 포맷을 찾기 위해 blob 기반으로 인코딩 자동 분석 가동
     fetch(targetFileUrl)
     .then(res => {
         if(!res.ok) throw new Error("서버 파일 로드 실패 (코드: " + res.status + ")");
@@ -144,20 +143,17 @@ function handleFileSelect(event) {
     parseCSVFile(file);
 }
 
-// 🛠️ [교정 완료] EUC-KR과 UTF-8 포맷을 둘 다 자동 스캔하는 만능 파서 함수
 function parseCSVFile(fileOrBlob) {
-    // 1차로 UTF-8 검사 후 한글이 깨지는 문자열()이 발견되면 EUC-KR로 스위칭하도록 안전 설계
     Papa.parse(fileOrBlob, {
         header: false,
         skipEmptyLines: true,
         encoding: "UTF-8", 
         complete: function(results) {
             let rows = results.data;
+            if(!rows || rows.length === 0) return;
             
-            // 첫 줄 검사 시 글자가 깨졌는지 확인 (한글 깨짐 특유의 기호나 이상한 결합 확인)
             const sampleText = rows.slice(0, 5).map(r => r.join('')).join('');
-            if (sampleText.includes('') || sampleText.includes('철명') === false && sampleText.match(/[ㄱ-ㅎㅏ-ㅣ가-힣]/) === null) {
-                // 깨짐 감지 시 EUC-KR로 재파싱 가동
+            if (sampleText.includes('') || sampleText.includes('거래처명') === false && sampleText.match(/[ㄱ-ㅎㅏ-ㅣ가-힣]/) === null) {
                 Papa.parse(fileOrBlob, {
                     header: false,
                     skipEmptyLines: true,
@@ -179,10 +175,25 @@ function processRows(rows) {
         return;
     }
 
+    // 🚀 [해결 핵심] 첫 줄(헤더 제목줄)에서 각 항목이 몇 번째 칸에 있는지 컴퓨터가 똑똑하게 스스로 검색하도록 설정합니다.
+    const headerRow = rows[0].map(h => h ? h.toString().trim().replace(/\s+/g, '') : '');
+    
+    // 각 열의 인덱스 찾기 (못 찾으면 기본 순서 대입)
+    const idxPcode = headerRow.findIndex(h => h.includes('P코드')) !== -1 ? headerRow.findIndex(h => h.includes('P코드')) : 0;
+    const idxName = headerRow.findIndex(h => h.includes('거래처명') || h.includes('거래처')) !== -1 ? headerRow.findIndex(h => h.includes('거래처명') || h.includes('거래처')) : 1;
+    const idxSido = headerRow.findIndex(h => h.includes('시도')) !== -1 ? headerRow.findIndex(h => h.includes('시도')) : 2;
+    const idxSigungu = headerRow.findIndex(h => h.includes('시군구')) !== -1 ? headerRow.findIndex(h => h.includes('시군구')) : 3;
+    const idxDong = headerRow.findIndex(h => h.includes('읍면동')) !== -1 ? headerRow.findIndex(h => h.includes('읍면동')) : 4;
+    const idxAddress = headerRow.findIndex(h => h.includes('주소') || h.includes('상세주소')) !== -1 ? headerRow.findIndex(h => h.includes('주소') || h.includes('상세주소')) : 5;
+    const idxAgency = headerRow.findIndex(h => h.includes('대리점')) !== -1 ? headerRow.findIndex(h => h.includes('대리점')) : 6;
+    const idxType = headerRow.findIndex(h => h.includes('중복여부') || h.includes('중복')) !== -1 ? headerRow.findIndex(h => h.includes('중복여부') || h.includes('중복')) : 7;
+    const idxScore = headerRow.findIndex(h => h === '실적') !== -1 ? headerRow.findIndex(h => h === '실적') : 8;
+    const idxTotalScore = headerRow.findIndex(h => h.includes('합계')) !== -1 ? headerRow.findIndex(h => h.includes('합계')) : 9;
+
     const dataRows = rows.slice(1);
 
     csvData = dataRows.map(row => {
-        if (!row || row.length < 2 || !row[0]) return null;
+        if (!row || row.length < 2 || !row[idxPcode]) return null;
 
         const parseNum = (val) => {
             if(!val) return 0;
@@ -191,16 +202,16 @@ function processRows(rows) {
         };
 
         return {
-            pcode: row[0] ? row[0].toString().trim() : '',
-            name: row[1] ? row[1].toString().trim() : '',
-            sido: row[2] ? row[2].toString().trim() : '',
-            sigungu: row[3] ? row[3].toString().trim() : '',
-            dong: row[4] ? row[4].toString().trim() : '',
-            address: row[5] ? row[5].toString().trim() : '공백',
-            agency: row[6] ? row[6].toString().trim() : '',
-            type: row[7] ? row[7].toString().trim() : '정보없음',
-            score: parseNum(row[8]),
-            total_score: parseNum(row[9])
+            pcode: row[idxPcode] ? row[idxPcode].toString().trim() : '',
+            name: row[idxName] ? row[idxName].toString().trim() : '',
+            sido: row[idxSido] ? row[idxSido].toString().trim() : '',
+            sigungu: row[idxSigungu] ? row[idxSigungu].toString().trim() : '',
+            dong: row[idxDong] ? row[idxDong].toString().trim() : '',
+            address: row[idxAddress] ? row[idxAddress].toString().trim() : '공백',
+            agency: row[idxAgency] ? row[idxAgency].toString().trim() : '',
+            type: row[idxType] ? row[idxType].toString().trim() : '정보없음',
+            score: parseNum(row[idxScore]),
+            total_score: parseNum(row[idxTotalScore])
         };
     }).filter(Boolean);
 
