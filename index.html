@@ -123,8 +123,8 @@
             <ul id="sigungu-list" class="dropdown-list"></ul>
         </div>
         <div class="filter-group">
-            <label>읍면동 검색</label>
-            <input type="text" id="search-dong" class="search-input" placeholder="🔍 읍면동 입력" onfocus="showDropdown('dong')" oninput="filterDropdown('dong')" autocomplete="off">
+            <label>읍면동명 검색</label>
+            <input type="text" id="search-dong" class="search-input" placeholder="🔍 읍면동명 입력" onfocus="showDropdown('dong')" oninput="filterDropdown('dong')" autocomplete="off">
             <ul id="dong-list" class="dropdown-list"></ul>
         </div>
         <div class="filter-group">
@@ -166,7 +166,6 @@
 
 <script>
 let csvData = [];
-// [수정] 내부 필터 상태 변수 구조 정의
 let filters = { sido: "", sigungu: "", dong: "", type: "" };
 
 window.onload = function() {
@@ -282,7 +281,6 @@ function processRows(rows) {
     initFilters();
 }
 
-// [수정] 4가지 필터 대상 초기화 실행
 function initFilters() {
     buildDropdown('sido', csvData);
     buildDropdown('sigungu', csvData);
@@ -331,7 +329,6 @@ function filterDropdown(key) {
     applyFilters(key);
 }
 
-// [수정] 복합 필터 조건 수식 수정 (시도, 시군구, 읍면동, 중복여부 매칭)
 function applyFilters(changedKey) {
     const filteredData = csvData.filter(item => {
         return (!filters.sido || item.sido.includes(filters.sido)) &&
@@ -389,7 +386,6 @@ function renderTable(data) {
     }
 }
 
-// [수정] 4가지 타겟 필터 인풋 클리어 처리
 function resetAllFilters() {
     filters = { sido: "", sigungu: "", dong: "", type: "" };
     document.getElementById('search-sido').value = "";
