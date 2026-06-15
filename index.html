@@ -12,7 +12,6 @@
         .container { max-width: 1400px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         h2 { text-align: center; color: #111827; margin-bottom: 25px; }
 
-        /* 보안을 위해 초기 상태는 화면에서 아예 렌더링되지 않도록 display: none 처리 */
         .filter-grid { display: none; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; background: #f9fafb; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 25px; }
         .filter-group { display: flex; flex-direction: column; position: relative; }
         .filter-group label { font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #4b5563; }
@@ -83,9 +82,7 @@
                         <th class="text-left">상세주소</th>
                         <th>대리점명</th>
                         <th>중복여부</th>
-                        <th>실적</th>
-                        <th>P코드합계</th>
-                    </tr>
+                        <th>대리점실적</th> <th>P코드합계</th> </tr>
                 </thead>
                 <tbody id="table-body">
                     <tr><td id="status-msg" colspan="10" style="padding:30px; color:#2563eb; font-weight:bold;">🔄 데이터를 안전하게 매칭하고 표를 생성하는 중입니다...</td></tr>
@@ -99,22 +96,16 @@
 let csvData = [];
 let filters = { sido: "", sigungu: "", dong: "", type: "" };
 
-// 관리자 인증을 체크하는 함수입니다.
 function checkAdminAccess() {
     const urlParams = new URLSearchParams(window.location.search);
-    const accessKey = urlParams.get('p'); // URL에서 ?p=값을 가져옵니다.
-
-    // 보안을 위해 비밀번호를 평문으로 적지 않고 SHA-256 해시값으로 비교합니다.
-    // 아래 해시값은 비밀번호 'admin123!'의 SHA-256 결과물입니다.
-    const secureHash = "e6c40669aa788a0cae0e91402280d96d747d9b9d363b7280f5ec896c6ca5608b";
+    const accessKey = urlParams.get('p');
+    const secureHash = "e6c40669aa788a0cae0e91402280d96d747d9b9d363b7280f5ec896c6ca5608b"; // 비밀번호: admin123!
 
     if (accessKey) {
-        // 입력받은 값을 암호화하여 매칭 검증
         crypto.subtle.digest("SHA-256", new TextEncoder().encode(accessKey))
         .then(buf => {
             const hashHex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
             if (hashHex === secureHash) {
-                // 일치할 경우 그리드 레이아웃(초록 네모칸)을 노출합니다.
                 document.getElementById('admin-filter').style.display = 'grid';
             }
         });
@@ -122,7 +113,6 @@ function checkAdminAccess() {
 }
 
 window.onload = function() {
-    // 페이지 로드 시 관리자 여부를 먼저 확인합니다.
     checkAdminAccess();
 
     const currentUrl = window.location.href.split('?')[0].split('#')[0];
@@ -135,46 +125,72 @@ window.onload = function() {
         return res.arrayBuffer(); 
     })
     .then(buffer => {
-        const decoder = new TextDecoder('euc-kr');
+        const view = new Uint8Array(buffer);
+        let encoding = 'euc-kr';
+        
+        let isUtf8 = false;
+        if (view.length >= 3 && view[0] === 0xEF && view[1] === 0xBB && view[2] === 0xBF) {
+            isUtf8 = true;
+        } else {
+            for (let i = 0; i < Math.min(view.length, 5000); i++) {
+                if (view[i] > 0x7F) {
+                    if ((view[i] & 0xE0) === 0xC0 && (view[i+1] & 0xC0) === 0x80) { isUtf8 = true; break; }
+                    if ((view[i] & 0xF0) === 0xE0 && (view[i+1] & 0xC0) === 0x80 && (view[i+2] & 0xC0) === 0x80) { isUtf8 = true; break; }
+                }
+            }
+        }
+        if (isUtf8) encoding = 'utf-8';
+
+        const decoder = new TextDecoder(encoding);
         const csvText = decoder.decode(buffer);
         
         Papa.parse(csvText, {
-            header: false,
+            header: true, 
             skipEmptyLines: true,
             complete: function(results) {
                 const rows = results.data;
-                if(!rows || rows.length <= 1) {
+                if(!rows || rows.length === 0) {
                     document.getElementById('status-msg').innerHTML = `⚠️ 엑셀 파일 내에 유효한 데이터가 존재하지 않습니다.`;
                     return;
                 }
 
-                const dataRows = rows.slice(1);
+                const parseNum = (val) => {
+                    if(!val) return 0;
+                    const clean = val.toString().replace(/,/g, '').trim();
+                    return parseInt(clean) || 0;
+                };
 
-                csvData = dataRows.map(row => {
-                    if (!row || row.length < 2 || !row[0]) return null;
-
-                    const parseNum = (val) => {
-                        if(!val) return 0;
-                        const clean = val.toString().replace(/,/g, '').trim();
-                        return parseInt(clean) || 0;
+                csvData = rows.map(row => {
+                    const getVal = (possibleNames) => {
+                        for (let name of possibleNames) {
+                            if (row[name] !== undefined) return row[name].toString().trim();
+                            let trimmedKey = Object.keys(row).find(k => k.trim() === name);
+                            if (trimmedKey) return row[trimmedKey].toString().trim();
+                        }
+                        return '';
                     };
 
+                    const pcode = getVal(['P코드', 'pcode']);
+                    if (!pcode) return null;
+
                     return {
-                        pcode: row[0] ? row[0].toString().trim() : '',
-                        name: row[1] ? row[1].toString().trim() : '',
-                        sido: row[2] ? row[2].toString().trim() : '',
-                        sigungu: row[3] ? row[3].toString().trim() : '',
-                        dong: row[4] ? row[4].toString().trim() : '',
-                        address: row[5] ? row[5].toString().trim() : '공백',
-                        agency: row[6] ? row[6].toString().trim() : '',
-                        type: row[7] ? row[7].toString().trim() : '정보없음',
-                        score: parseNum(row[8]),
-                        total_score: parseNum(row[9])
+                        pcode: pcode,
+                        name: getVal(['거래처명', '거래처', 'name']),
+                        sido: getVal(['시도', '시도명', 'sido']),
+                        sigungu: getVal(['시군구', '시군구명', 'sigungu']),
+                        dong: getVal(['읍면동', '읍면동명', 'dong']),
+                        address: getVal(['상세주소', '주소', 'address']) || '공백',
+                        agency: getVal(['대리점명', '대리점', 'agency']),
+                        type: getVal(['중복여부', '중복', 'type']) || '정보없음',
+                        // 대리점실적 항목 매칭
+                        score: parseNum(getVal(['대리점실적', '실적', '실적금액', 'score'])),
+                        // P코드합계 항목 매칭 (P코드실적 명칭도 예외 호환 등록)
+                        total_score: parseNum(getVal(['P코드합계', 'P코드실적', '합계', 'total_score']))
                     };
                 }).filter(Boolean);
 
                 if(csvData.length === 0) {
-                    document.getElementById('status-msg').innerHTML = `⚠️ 파일은 읽었으나 매칭할 수 있는 정상 데이터 행이 없습니다.`;
+                    document.getElementById('status-msg').innerHTML = `⚠️ 파일은 읽었으나 매칭할 수 있는 정상 데이터 행이 없습니다. 엑셀의 첫 행(헤더)에 명칭이 올바르게 적혀있는지 확인하세요.`;
                     return;
                 }
 
@@ -187,6 +203,7 @@ window.onload = function() {
     });
 };
 
+// --- 아래 필터 기능 및 테이블 드롭다운 로직 기존과 동일 ---
 function initFilters() {
     buildDropdown('sido', csvData);
     buildDropdown('sigungu', csvData);
