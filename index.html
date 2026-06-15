@@ -34,13 +34,13 @@
         .table-container { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 8px; max-height: 550px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13px; text-align: center; table-layout: fixed; }
         
-        /* 컬럼별 고정 너비 지정 (글자 세로 찢어짐 방지) */
+        /* 컬럼별 고정 너비 지정 */
         th:nth-child(1), td:nth-child(1) { width: 85px; }  /* P코드 */
         th:nth-child(2), td:nth-child(2) { width: 140px; } /* 거래처명 */
         th:nth-child(3), td:nth-child(3) { width: 80px; }  /* 읍면동 */
         th:nth-child(4), td:nth-child(4) { width: auto; }   /* 상세주소 */
-        th:nth-child(5), td:nth-child(5) { width: 110px; } /* 대리점명 */
-        th:nth-child(6), td:nth-child(6) { width: 85px; }  /* 중복여부 */
+        th:nth-child(5), td:nth-child(5) { width: 120px; } /* 대리점명 */
+        th:nth-child(6), td:nth-child(6) { width: 95px; }  /* 중복여부 */
         th:nth-child(7), td:nth-child(7) { width: 85px; }  /* 점유비 */
         th:nth-child(8), td:nth-child(8) { width: 105px; } /* 대리점실적 */
 
@@ -48,16 +48,28 @@
         th { background-color: #f3f4f6; color: #374151; font-weight: 700; position: sticky; top: 0; z-index: 10; }
         td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         td.text-left { text-align: left; white-space: normal; word-break: break-all; } 
-        tr:hover { background-color: #f9fafb; }
+        tr:hover { background-color: #f1f5f9; }
         
-        /* 카카오맵 단독 링크 스타일 변경 */
+        /* P코드가 중복일 경우 전체 행 배경색 지정 */
+        tr.duplicate-row { background-color: #FFFFCC !important; }
+        tr.duplicate-row:hover { background-color: #fef08a !important; }
+
+        /* 카카오맵 링크 스타일 */
         .map-link { color: #2563eb; text-decoration: none; font-weight: 500; display: inline-block; }
         .map-link:hover { text-decoration: underline; color: #1d4ed8; }
 
-        .badge { padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; display: inline-block; }
-        .badge-total { background-color: #dcfce7; color: #166534; }  /* 대리점실적: 녹색 */
-        .badge-score { background-color: #e0f2fe; color: #0369a1; }  /* 점유비: 청색 */
+        /* 배지 공통 및 개별 맞춤 디자인 */
+        .badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; display: inline-block; }
+        .badge-total { background-color: #dcfce7; color: #166534; }  /* 대리점실적 */
+        .badge-score { background-color: #e0f2fe; color: #0369a1; }  /* 점유비 */
         .badge-type { background-color: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db; }
+        
+        /* [요청 조건] PS_전속 전용: 빨간배경 + 노란글씨 */
+        .badge-ps-exclusive { background-color: #ef4444 !important; color: #fef08a !important; border: none !important; }
+        
+        /* [요청 조건] 광장대리점 전용: 남색배경 + 노란글씨 */
+        .badge-gj-agency { background-color: #1e3a8a !important; color: #fef08a !important; }
+
         .total-count { font-size: 14px; font-weight: bold; color: #2563eb; margin-bottom: 8px; }
 
         @media (max-width: 768px) {
@@ -140,6 +152,7 @@
 <script>
 let csvData = [];
 let filters = { sido: "", sigungu: "", dong: "", type: "" };
+let pcodeCounts = {}; // P코드 중복 여부를 실시간 연산하기 위한 카운팅 객체
 
 window.onload = function() {
     const currentUrl = window.location.href.split('?')[0].split('#')[0];
@@ -222,6 +235,8 @@ function processRows(rows) {
 
     const dataRows = rows.slice(1);
 
+    pcodeCounts = {}; // 카운터 초기화
+
     csvData = dataRows.map(row => {
         if (!row || row.length < 2 || !row[idxPcode]) return null;
 
@@ -233,15 +248,18 @@ function processRows(rows) {
 
         const currentScore = parseNum(row[idxScore]);
         const currentTotalScore = parseNum(row[idxTotalScore]);
+        const pcodeVal = row[idxPcode].toString().trim();
 
-        // 직접 수식 계산 로직 유지 (대리점실적 / P코드합계)
+        // P코드 빈도 계산 (행 단위 색상 반전을 위해 수집)
+        pcodeCounts[pcodeVal] = (pcodeCounts[pcodeVal] || 0) + 1;
+
         let computedRatio = 0;
         if (currentTotalScore > 0) {
             computedRatio = (currentScore / currentTotalScore) * 100;
         }
 
         return {
-            pcode: row[idxPcode] ? row[idxPcode].toString().trim() : '',
+            pcode: pcodeVal,
             name: row[idxName] ? row[idxName].toString().trim() : '',
             sido: row[idxSido] ? row[idxSido].toString().trim() : '',
             sigungu: row[idxSigungu] ? row[idxSigungu].toString().trim() : '',
@@ -335,15 +353,23 @@ function renderTable(data) {
         return;
     }
 
-    // 상위 100개만 출력하는 제한 로직 유지
     const limitData = data.slice(0, 100); 
     limitData.forEach(item => {
         const fullAddress = `${item.sido} ${item.sigungu} ${item.address}`.trim();
         const kakaoMapUrl = `https://map.kakao.com/link/search/${encodeURIComponent(fullAddress)}`;
         const formattedRatio = item.ratio.toFixed(1) + '%';
 
+        // [요청 조건] P코드가 중복(전체 로드 데이터 내에서 2회 이상 발생)될 경우 행 스타일 클래스 부여
+        const isDuplicateRow = pcodeCounts[item.pcode] > 1 ? 'class="duplicate-row"' : '';
+
+        // [요청 조건] 중복여부가 'PS_전속'일 경우 스타일 전용 클래스 분기 처리
+        const typeBadgeClass = item.type === 'PS_전속' ? 'badge badge-ps-exclusive' : 'badge badge-type';
+
+        // [요청 조건] 대리점명이 '광장대리점'일 경우 스타일 전용 클래스 분기 처리
+        const agencyBadgeClass = item.agency === '광장대리점' ? 'badge badge-gj-agency' : '';
+
         tbody.innerHTML += `
-            <tr>
+            <tr ${isDuplicateRow}>
                 <td><b>${item.pcode}</b></td>
                 <td title="${item.name}"><b>${item.name}</b></td>
                 <td>${item.dong}</td>
@@ -352,15 +378,14 @@ function renderTable(data) {
                         📍 ${item.address}
                     </a>
                 </td>
-                <td title="${item.agency}">${item.agency}</td>
-                <td><span class="badge badge-type">${item.type}</span></td>
+                <td title="${item.agency}"><span class="${agencyBadgeClass}">${item.agency}</span></td>
+                <td><span class="${typeBadgeClass}">${item.type}</span></td>
                 <td><span class="badge badge-score">${formattedRatio}</span></td>
                 <td><span class="badge badge-total">${item.score.toLocaleString()}</span></td>
             </tr>
         `;
     });
 
-    // 100개 알림 메시지 유지
     if (data.length > 100) {
         tbody.innerHTML += `<tr><td colspan="8" style="padding:15px; background:#f3f4f6; color:#4b5563; font-weight:bold;">⚠️ 데이터가 너무 많아 상위 100개만 화면에 표시 중입니다. 필터를 이용해 범위를 좁혀주세요.</td></tr>`;
     }
