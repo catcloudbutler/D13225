@@ -87,7 +87,7 @@
                     </tr>
                 </thead>
                 <tbody id="table-body">
-                    <tr><td id="status-msg" colspan="10" style="padding:30px; color:#2563eb; font-weight:bold;">🔄 데이터를 불러와 정밀 매칭 중입니다...</td></tr>
+                    <tr><td id="status-msg" colspan="10" style="padding:30px; color:#2563eb; font-weight:bold;">🔄 데이터를 안전하게 매칭하고 표를 생성하는 중입니다...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -112,40 +112,46 @@ window.onload = function() {
         const decoder = new TextDecoder('euc-kr');
         const csvText = decoder.decode(buffer);
         
-        // 🚀 [해결 핵심] header: false로 설정하여 글자 이름 대신 '순서(인덱스)'대로 가져옵니다.
         Papa.parse(csvText, {
             header: false,
             skipEmptyLines: true,
             complete: function(results) {
                 const rows = results.data;
-                if(rows.length <= 1) {
-                    document.getElementById('status-msg').innerHTML = `<tr><td colspan="10" style="color:#ef4444; padding:30px;">⚠️ 엑셀 파일 내에 데이터가 존재하지 않습니다.</td></tr>`;
+                if(!rows || rows.length <= 1) {
+                    document.getElementById('status-msg').innerHTML = `⚠️ 엑셀 파일 내에 유효한 데이터가 존재하지 않습니다.`;
                     return;
                 }
 
-                // 첫 줄(헤더 제목줄)을 제외하고 두 번째 줄부터 데이터 추출
+                // 첫 줄(헤더 제목줄)을 제외하고 두 번째 줄부터 안전하게 변환 실행
                 const dataRows = rows.slice(1);
 
                 csvData = dataRows.map(row => {
-                    // 각 행의 데이터가 비어있지 않은지 검사
-                    if (!row[0]) return null;
+                    // 데이터 행이 깨졌거나 비어있으면 건너뛰기
+                    if (!row || row.length < 2 || !row[0]) return null;
+
+                    // 숫자에 콤마(,)가 포함되어 있을 경우 안전하게 제거하는 가이드 함수
+                    const parseNum = (val) => {
+                        if(!val) return 0;
+                        const clean = val.toString().replace(/,/g, '').trim();
+                        return parseInt(clean) || 0;
+                    };
 
                     return {
-                        pcode: row[0] ? row[0].toString().trim() : '',       // 1번째 칸: P코드
-                        name: row[1] ? row[1].toString().trim() : '',        // 2번째 칸: 거래처명
-                        sido: row[2] ? row[2].toString().trim() : '',        // 3번째 칸: 시도명
-                        sigungu: row[3] ? row[3].toString().trim() : '',     // 4번째 칸: 시군구명
-                        dong: row[4] ? row[4].toString().trim() : '',        // 5번째 칸: 읍면동명
-                        address: row[5] ? row[5].toString().trim() : '공백',  // 6번째 칸: 주소
-                        agency: row[6] ? row[6].toString().trim() : '',     // 7번째 칸: 대리점명
-                        type: row[7] ? row[7].toString().trim() : '정보없음', // 8번째 칸: 중복여부
-                        score: parseInt((row[8] || '0').toString().replace(/,/g, '')) || 0,        // 9번째 칸: 실적
-                        total_score: parseInt((row[9] || '0').toString().replace(/,/g, '')) || 0; // 10번째 칸: P코드합계
+                        pcode: row[0] ? row[0].toString().trim() : '',
+                        name: row[1] ? row[1].toString().trim() : '',
+                        sido: row[2] ? row[2].toString().trim() : '',
+                        sigungu: row[3] ? row[3].toString().trim() : '',
+                        dong: row[4] ? row[4].toString().trim() : '',
+                        address: row[5] ? row[5].toString().trim() : '공백',
+                        agency: row[6] ? row[6].toString().trim() : '',
+                        type: row[7] ? row[7].toString().trim() : '정보없음',
+                        score: parseNum(row[8]),
+                        total_score: parseNum(row[9])
                     };
-                }).filter(Boolean); // 빈 데이터 걸러내기
+                }).filter(Boolean); // null 값(불량 데이터) 제거
 
                 if(csvData.length === 0) {
-                    document.getElementById('status-msg').innerHTML = `⚠️ 유효한 데이터 행을 찾지 못했습니다.`;
+                    document.getElementById('status-msg').innerHTML = `⚠️ 파일은 읽었으나 매칭할 수 있는 정상 데이터 행이 없습니다.`;
                     return;
                 }
 
