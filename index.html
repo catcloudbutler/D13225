@@ -12,21 +12,21 @@
         .container { max-width: 1400px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         h2 { text-align: center; color: #111827; margin-bottom: 25px; }
 
-        /* [수정] 관리자 전용 필터 그리드: 초기에는 완전히 숨김 처리 */
-        .filter-grid { display: none; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; background: #f9fafb; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 25px; }
-        
-        /* 관리자 인증 성공 시 적용될 스타일 클래스 */
-        .filter-grid.is-admin { display: grid !important; }
+        .upload-section { background: #f0fdf4; border: 2px dashed #bbf7d0; border-radius: 8px; padding: 15px 20px; margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px; }
+        .upload-info { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #166534; }
+        .upload-info b { color: #15803d; }
+        .file-label { background-color: #16a34a; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: inline-block; transition: background 0.2s; }
+        .file-label:hover { background-color: #15803d; }
+        #csv-file { display: none; }
 
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; background: #f9fafb; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 25px; }
         .filter-group { display: flex; flex-direction: column; position: relative; }
         .filter-group label { font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #4b5563; }
         .search-input { padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; box-sizing: border-box; width: 100%; background-color: #fff; }
         
-        /* [중요] 기존 드롭다운 박스 스타일 완벽 복구 */
         .dropdown-list { position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #d1d5db; border-radius: 0 0 6px 6px; max-height: 180px; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.05); z-index: 1000; display: none; margin: 0; padding: 0; list-style: none; }
         .dropdown-list li { padding: 10px 12px; cursor: pointer; font-size: 14px; text-align: left; }
         .dropdown-list li:hover { background-color: #f3f4f6; }
-        
         .btn-reset { padding: 10px; background-color: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; margin-top: auto; }
         .btn-reset:hover { background-color: #dc2626; }
 
@@ -49,7 +49,17 @@
 <div class="container">
     <h2>🏢 판매점 데이터 통합 조회 시스템</h2>
 
-    <div id="admin-filter" class="filter-grid">
+    <div class="upload-section">
+        <div class="upload-info">
+            <span>📊 <b>분석 대상 파일:</b> <span id="target-file-name" style="font-weight: bold; color: #2563eb;">전거래처_PS중복.csv (서버 자동 연동)</span></span>
+        </div>
+        <div>
+            <label for="csv-file" class="file-label">📂 다른 파일 첨부/교체</label>
+            <input type="file" id="csv-file" accept=".csv" onchange="handleFileSelect(event)">
+        </div>
+    </div>
+
+    <div class="filter-grid">
         <div class="filter-group">
             <label>시도명 검색</label>
             <input type="text" id="search-sido" class="search-input" placeholder="🔍 시도명 입력" onfocus="showDropdown('sido')" oninput="filterDropdown('sido')" autocomplete="off">
@@ -89,12 +99,10 @@
                         <th class="text-left">상세주소</th>
                         <th>대리점명</th>
                         <th>중복여부</th>
-                        <th>대리점실적</th>
-                        <th>P코드합계</th>
-                    </tr>
+                        <th>대리점실적</th> <th>P코드합계</th> </tr>
                 </thead>
                 <tbody id="table-body">
-                    <tr><td id="status-msg" colspan="10" style="padding:30px; color:#2563eb; font-weight:bold;">🔄 데이터를 안전하게 매칭하고 표를 생성하는 중입니다...</td></tr>
+                    <tr><td id="status-msg" colspan="10" style="padding:30px; color:#2563eb; font-weight:bold;">🔄 데이터를 검증하고 매칭하는 중입니다...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -105,27 +113,7 @@
 let csvData = [];
 let filters = { sido: "", sigungu: "", dong: "", type: "" };
 
-// 관리자 인증 함수 수정 (클래스 부여 방식으로 변경하여 드롭다운과 충돌 해결)
-function checkAdminAccess() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const accessKey = urlParams.get('p');
-    const secureHash = "e6c40669aa788a0cae0e91402280d96d747d9b9d363b7280f5ec896c6ca5608b"; // 비밀번호: admin123!
-
-    if (accessKey) {
-        crypto.subtle.digest("SHA-256", new TextEncoder().encode(accessKey))
-        .then(buf => {
-            const hashHex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-            if (hashHex === secureHash) {
-                // 특정 스타일 속성을 강제하지 않고 클래스를 추가하여 드롭다운 기능 복구
-                document.getElementById('admin-filter').classList.add('is-admin');
-            }
-        });
-    }
-}
-
 window.onload = function() {
-    checkAdminAccess();
-
     const currentUrl = window.location.href.split('?')[0].split('#')[0];
     const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/')) + '/';
     const targetFileUrl = baseUrl + '전거래처_PS중복.csv';
@@ -133,84 +121,112 @@ window.onload = function() {
     fetch(targetFileUrl)
     .then(res => {
         if(!res.ok) throw new Error("서버 파일 로드 실패 (코드: " + res.status + ")");
-        return res.arrayBuffer(); 
+        return res.blob(); 
     })
-    .then(buffer => {
-        const view = new Uint8Array(buffer);
-        let encoding = 'euc-kr';
-        
-        let isUtf8 = false;
-        if (view.length >= 3 && view[0] === 0xEF && view[1] === 0xBB && view[2] === 0xBF) {
-            isUtf8 = true;
-        } else {
-            for (let i = 0; i < Math.min(view.length, 5000); i++) {
-                if (view[i] > 0x7F) {
-                    if ((view[i] & 0xE0) === 0xC0 && (view[i+1] & 0xC0) === 0x80) { isUtf8 = true; break; }
-                    if ((view[i] & 0xF0) === 0xE0 && (view[i+1] & 0xC0) === 0x80 && (view[i+2] & 0xC0) === 0x80) { isUtf8 = true; break; }
-                }
-            }
-        }
-        if (isUtf8) encoding = 'utf-8';
-
-        const decoder = new TextDecoder(encoding);
-        const csvText = decoder.decode(buffer);
-        
-        Papa.parse(csvText, {
-            header: true, 
-            skipEmptyLines: true,
-            complete: function(results) {
-                const rows = results.data;
-                if(!rows || rows.length === 0) {
-                    document.getElementById('status-msg').innerHTML = `⚠️ 엑셀 파일 내에 유효한 데이터가 존재하지 않습니다.`;
-                    return;
-                }
-
-                const parseNum = (val) => {
-                    if(!val) return 0;
-                    const clean = val.toString().replace(/,/g, '').trim();
-                    return parseInt(clean) || 0;
-                };
-
-                csvData = rows.map(row => {
-                    const getVal = (possibleNames) => {
-                        for (let name of possibleNames) {
-                            if (row[name] !== undefined) return row[name].toString().trim();
-                            let trimmedKey = Object.keys(row).find(k => k.trim() === name);
-                            if (trimmedKey) return row[trimmedKey].toString().trim();
-                        }
-                        return '';
-                    };
-
-                    const pcode = getVal(['P코드', 'pcode']);
-                    if (!pcode) return null;
-
-                    return {
-                        pcode: pcode,
-                        name: getVal(['거래처명', '거래처', 'name']),
-                        sido: getVal(['시도', '시도명', 'sido']),
-                        sigungu: getVal(['시군구', '시군구명', 'sigungu']),
-                        dong: getVal(['읍면동', '읍면동명', 'dong']),
-                        address: getVal(['상세주소', '주소', 'address']) || '공백',
-                        agency: getVal(['대리점명', '대리점', 'agency']),
-                        type: getVal(['중복여부', '중복', 'type']) || '정보없음',
-                        score: parseNum(getVal(['대리점실적', '실적', '실적금액', 'score'])),
-                        total_score: parseNum(getVal(['P코드합계', 'P코드실적', '합계', 'total_score']))
-                    };
-                }).filter(Boolean);
-
-                if(csvData.length === 0) {
-                    document.getElementById('status-msg').innerHTML = `⚠️ 파일은 읽었으나 매칭할 수 있는 정상 데이터 행이 없습니다. 엑셀의 첫 행(헤더)에 명칭이 올바르게 적혀있는지 확인하세요.`;
-                    return;
-                }
-
-                initFilters();
-            }
-        });
+    .then(blob => {
+        parseCSVFile(blob);
     })
     .catch(err => {
-        document.getElementById('status-msg').innerHTML = `<span style="color:#ef4444;">⚠️ 연동 실패<br>[상세 정보]: ${err.message}</span>`;
+        document.getElementById('status-msg').innerHTML = `<span style="color:#ef4444;">⚠️ 서버 데이터 로드 실패<br>[원인]: ${err.message}</span>`;
     });
 };
+
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    document.getElementById('target-file-name').textContent = `${file.name} (사용자 첨부 파일)`;
+    document.getElementById('table-body').innerHTML = `<tr><td id="status-msg" colspan="10" style="padding:30px; color:#16a34a; font-weight:bold;">📂 데이터를 추출하고 복원하는 중...</td></tr>`;
+    
+    parseCSVFile(file);
+}
+
+function parseCSVFile(fileOrBlob) {
+    Papa.parse(fileOrBlob, {
+        header: false,
+        skipEmptyLines: true,
+        encoding: "UTF-8", 
+        complete: function(results) {
+            let rows = results.data;
+            if(!rows || rows.length === 0) return;
+            
+            const sampleText = rows.slice(0, 5).map(r => r.join('')).join('');
+            if (sampleText.includes('') || sampleText.includes('거래처명') === false && sampleText.match(/[ㄱ-ㅎㅏ-ㅣ가-힣]/) === null) {
+                Papa.parse(fileOrBlob, {
+                    header: false,
+                    skipEmptyLines: true,
+                    encoding: "EUC-KR",
+                    complete: function(eucResults) {
+                        processRows(eucResults.data);
+                    }
+                });
+            } else {
+                processRows(rows);
+            }
+        }
+    });
+}
+
+function processRows(rows) {
+    if(!rows || rows.length <= 1) {
+        document.getElementById('status-msg').innerHTML = `⚠️ 엑셀 파일 내에 유효한 데이터가 존재하지 않습니다.`;
+        return;
+    }
+
+    const headerRow = rows[0].map(h => h ? h.toString().trim().replace(/\s+/g, '') : '');
+    
+    // 🔍 각 데이터 열 위치 매칭 (다양한 헤더 명칭 유연하게 매칭 가능하도록 예외처리)
+    const idxPcode = headerRow.findIndex(h => h.includes('P코드')) !== -1 ? headerRow.findIndex(h => h.includes('P코드')) : 0;
+    const idxName = headerRow.findIndex(h => h.includes('거래처명') || h.includes('거래처')) !== -1 ? headerRow.findIndex(h => h.includes('거래처명') || h.includes('거래처')) : 1;
+    const idxSido = headerRow.findIndex(h => h.includes('시도')) !== -1 ? headerRow.findIndex(h => h.includes('시도')) : 2;
+    const idxSigungu = headerRow.findIndex(h => h.includes('시군구')) !== -1 ? headerRow.findIndex(h => h.includes('시군구')) : 3;
+    const idxDong = headerRow.findIndex(h => h.includes('읍면동')) !== -1 ? headerRow.findIndex(h => h.includes('읍면동')) : 4;
+    const idxAddress = headerRow.findIndex(h => h.includes('주소') || h.includes('상세주소')) !== -1 ? headerRow.findIndex(h => h.includes('주소') || h.includes('상세주소')) : 5;
+    const idxType = headerRow.findIndex(h => h.includes('중복여부') || h.includes('중복')) !== -1 ? headerRow.findIndex(h => h.includes('중복여부') || h.includes('중복')) : 7;
+    
+    // 실적 및 합계 열 추적 명칭 고정 및 보완
+    const idxScore = headerRow.findIndex(h => h.includes('대리점실적') || h.includes('실적')) !== -1 ? headerRow.findIndex(h => h.includes('대리점실적') || h.includes('실적')) : 8;
+    const idxTotalScore = headerRow.findIndex(h => h.includes('P코드합계') || h.includes('P코드실적') || h.includes('합계')) !== -1 ? headerRow.findIndex(h => h.includes('P코드합계') || h.includes('P코드실적') || h.includes('합계')) : 9;
+
+    let idxAgency = headerRow.findIndex(h => h === '대리점명' || h === '대리점');
+    if(idxAgency === -1) { 
+        idxAgency = headerRow.findIndex(h => h.includes('대리점') && !h.includes('코드'));
+    }
+    if(idxAgency === -1) idxAgency = 6;
+
+    const dataRows = rows.slice(1);
+
+    csvData = dataRows.map(row => {
+        if (!row || row.length < 2 || !row[idxPcode]) return null;
+
+        const parseNum = (val) => {
+            if(!val) return 0;
+            const clean = val.toString().replace(/,/g, '').trim();
+            return parseInt(clean) || 0;
+        };
+
+        return {
+            pcode: row[idxPcode] ? row[idxPcode].toString().trim() : '',
+            name: row[idxName] ? row[idxName].toString().trim() : '',
+            sido: row[idxSido] ? row[idxSido].toString().trim() : '',
+            sigungu: row[idxSigungu] ? row[idxSigungu].toString().trim() : '',
+            dong: row[idxDong] ? row[idxDong].toString().trim() : '',
+            address: row[idxAddress] ? row[idxAddress].toString().trim() : '공백',
+            agency: row[idxAgency] ? row[idxAgency].toString().trim() : '',
+            type: row[idxType] ? row[idxType].toString().trim() : '정보없음',
+            score: parseNum(row[idxScore]),        
+            total_score: parseNum(row[idxTotalScore]) 
+        };
+    }).filter(Boolean);
+
+    if(csvData.length === 0) {
+        document.getElementById('status-msg').innerHTML = `⚠️ 정상 데이터 매칭에 실패했습니다. 파일 형식을 확인해주세요.`;
+        return;
+    }
+
+    resetAllFilters();
+    initFilters();
+}
 
 function initFilters() {
     buildDropdown('sido', csvData);
@@ -220,7 +236,6 @@ function initFilters() {
     renderTable(csvData);
 }
 
-/* [복구 완료] 드롭다운 박스 생성 및 상호작용 로직 */
 function buildDropdown(key, data) {
     const listEl = document.getElementById(`${key}-list`);
     const uniqueValues = [...new Set(data.map(item => item[key]))].filter(Boolean).sort();
@@ -230,7 +245,7 @@ function buildDropdown(key, data) {
         const li = document.createElement('li');
         li.textContent = val;
         li.onclick = function(e) { 
-            e.stopPropagation(); // 클릭 이벤트 버블링 방지
+            e.stopPropagation(); // 드롭다운 클릭 시 이벤트 전파 방지 (버블링 방어)
             selectValue(key, val); 
         };
         listEl.appendChild(li);
@@ -320,7 +335,6 @@ function resetAllFilters() {
     if(csvData.length > 0) initFilters();
 }
 
-// 바탕화면 클릭 시 드롭다운이 닫히도록 설정
 document.addEventListener('click', function(e) {
     if (!e.target.closest('.filter-group')) {
         document.querySelectorAll('.dropdown-list').forEach(el => el.style.display = 'none');
