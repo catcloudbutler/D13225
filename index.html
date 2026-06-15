@@ -2,56 +2,73 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=yes">
     <title>지역별 판매점 데이터 통합 복합 검색 필터 시스템</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     
     <style>
-        body { font-family: 'Malgun Gothic', sans-serif; padding: 20px; background-color: #f3f4f6; color: #1f2937; }
-        .container { max-width: 1400px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        h2 { text-align: center; color: #111827; margin-bottom: 25px; }
+        body { font-family: 'Malgun Gothic', sans-serif; padding: 15px; background-color: #f3f4f6; color: #1f2937; margin: 0; }
+        .container { max-width: 1400px; margin: 0 auto; background: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        h2 { text-align: center; color: #111827; margin-bottom: 20px; font-size: 20px; }
 
-        .upload-section { background: #f0fdf4; border: 2px dashed #bbf7d0; border-radius: 8px; padding: 15px 20px; margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px; }
-        .upload-info { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #166534; }
+        .upload-section { background: #f0fdf4; border: 2px dashed #bbf7d0; border-radius: 8px; padding: 12px 15px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+        .upload-info { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #166534; }
         .upload-info b { color: #15803d; }
-        .file-label { background-color: #16a34a; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: inline-block; transition: background 0.2s; }
+        .file-label { background-color: #16a34a; color: white; padding: 8px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; display: inline-block; transition: background 0.2s; white-space: nowrap; }
         .file-label:hover { background-color: #15803d; }
         #csv-file { display: none; }
 
-        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; background: #f9fafb; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 25px; }
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px; }
         .filter-group { display: flex; flex-direction: column; position: relative; }
-        .filter-group label { font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #4b5563; }
-        .search-input { padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; box-sizing: border-box; width: 100%; background-color: #fff; }
+        .filter-group label { font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #4b5563; }
+        .search-input { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; width: 100%; background-color: #fff; }
         
         .dropdown-list { position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #d1d5db; border-radius: 0 0 6px 6px; max-height: 180px; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.05); z-index: 1000; display: none; margin: 0; padding: 0; list-style: none; }
-        .dropdown-list li { padding: 10px 12px; cursor: pointer; font-size: 14px; }
+        .dropdown-list li { padding: 8px 10px; cursor: pointer; font-size: 13px; }
         .dropdown-list li:hover { background-color: #f3f4f6; }
-        .btn-reset { padding: 10px; background-color: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; margin-top: auto; }
+        .btn-reset { padding: 9px; background-color: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; margin-top: auto; white-space: nowrap; }
         .btn-reset:hover { background-color: #dc2626; }
 
-        .table-container { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 8px; max-height: 600px; overflow-y: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; }
-        th, td { padding: 12px 10px; border-bottom: 1px solid #e5e7eb; }
+        /* 모바일 최적화 레이아웃 설정 */
+        .table-container { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 8px; max-height: 550px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13px; text-align: center; table-layout: fixed; }
+        
+        /* 컬럼별 고정 너비 지정 (모바일 글자 찢어짐 세로 정렬 방지) */
+        th:nth-child(1), td:nth-child(1) { width: 85px; }  /* P코드 */
+        th:nth-child(2), td:nth-child(2) { width: 140px; } /* 거래처명 */
+        th:nth-child(3), td:nth-child(3) { width: 80px; }  /* 읍면동 */
+        th:nth-child(4), td:nth-child(4) { width: auto; }   /* 상세주소 */
+        th:nth-child(5), td:nth-child(5) { width: 110px; } /* 대리점명 */
+        th:nth-child(6), td:nth-child(6) { width: 85px; }  /* 중복여부 */
+        th:nth-child(7), td:nth-child(7) { width: 85px; }  /* 점유비 */
+        th:nth-child(8), td:nth-child(8) { width: 105px; } /* 대리점실적 */
+
+        th, td { padding: 10px 8px; border-bottom: 1px solid #e5e7eb; box-sizing: border-box; }
         th { background-color: #f3f4f6; color: #374151; font-weight: 700; position: sticky; top: 0; z-index: 10; }
+        td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        td.text-left { text-align: left; white-space: normal; word-break: break-all; } 
         tr:hover { background-color: #f9fafb; }
         
-        .map-link {
-            color: #2563eb;
-            text-decoration: none;
-            font-weight: 500;
-        }
-        .map-link:hover {
-            text-decoration: underline;
-            color: #1d4ed8;
-        }
+        .map-link { color: #2563eb; text-decoration: none; font-weight: 500; }
+        .map-link:hover { text-decoration: underline; color: #1d4ed8; }
 
-        .badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; }
-        .badge-total { background-color: #e0f2fe; color: #0369a1; }
-        .badge-score { background-color: #dcfce7; color: #166534; }
+        .badge { padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; display: inline-block; }
+        .badge-total { background-color: #dcfce7; color: #166534; }  /* 대리점실적: 녹색 */
+        .badge-score { background-color: #e0f2fe; color: #0369a1; }  /* 점유비: 청색 */
         .badge-type { background-color: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db; }
-        .text-left { text-align: left; }
-        .total-count { font-size: 16px; font-weight: bold; color: #2563eb; margin-bottom: 10px; }
+        .total-count { font-size: 14px; font-weight: bold; color: #2563eb; margin-bottom: 8px; }
+
+        @media (max-width: 768px) {
+            body { padding: 8px; }
+            .container { padding: 12px; border-radius: 8px; }
+            h2 { font-size: 17px; margin-bottom: 15px; }
+            .filter-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 10px; }
+            .btn-reset { grid-column: span 2; margin-top: 5px; }
+            table { font-size: 12px; }
+            th, td { padding: 8px 5px; }
+            .badge { font-size: 10px; padding: 2px 4px; }
+        }
     </style>
 </head>
 <body>
@@ -107,8 +124,8 @@
                         <th class="text-left">상세주소</th>
                         <th>대리점명</th>
                         <th>중복여부</th>
+                        <th>점유비</th>
                         <th>대리점실적</th>
-                        <th>P코드합계</th>
                     </tr>
                 </thead>
                 <tbody id="table-body">
@@ -192,12 +209,14 @@ function processRows(rows) {
     const idxDong = headerRow.findIndex(h => h.includes('읍면동')) !== -1 ? headerRow.findIndex(h => h.includes('읍면동')) : 4;
     const idxAddress = headerRow.findIndex(h => h.includes('주소') || h.includes('상세주소')) !== -1 ? headerRow.findIndex(h => h.includes('주소') || h.includes('상세주소')) : 5;
     const idxType = headerRow.findIndex(h => h.includes('중복여부') || h.includes('중복')) !== -1 ? headerRow.findIndex(h => h.includes('중복여부') || h.includes('중복')) : 7;
-    const idxTotalScore = headerRow.findIndex(h => h.includes('점유비') || h.includes('점유비')) !== -1 ? headerRow.findIndex(h => h.includes('점유비') || h.includes('점유비')) : 8;
-    const idxScore = headerRow.findIndex(h => h.includes('대리점실적') || h.includes('대리점실적')) !== -1 ? headerRow.findIndex(h => h.includes('대리점실적') || h.includes('대리점실적')) : 9;
+    
+    // 점유비 실시간 연산 처리를 위해 P코드합계와 대리점실적 인덱스를 정확하게 동적 매칭
+    const idxTotalScore = headerRow.findIndex(h => h.includes('P코드합계') || h.includes('합계')) !== -1 ? headerRow.findIndex(h => h.includes('P코드합계') || h.includes('합계')) : 9;
+    const idxScore = headerRow.findIndex(h => h.includes('대리점실적') || h.includes('실적')) !== -1 ? headerRow.findIndex(h => h.includes('대리점실적') || h.includes('실적')) : 8;
 
     let idxAgency = headerRow.findIndex(h => h === '대리점명' || h === '대리점');
     if(idxAgency === -1) { 
-        idxAgency = headerRow.findIndex(h => h.includes('대리점') && !h.includes('코드'));
+        idxAgency = headerRow.findIndex(h => h.includes('대리점') && !h.includes('코드') && !h.includes('실적'));
     }
     if(idxAgency === -1) idxAgency = 6; 
 
@@ -206,11 +225,22 @@ function processRows(rows) {
     csvData = dataRows.map(row => {
         if (!row || row.length < 2 || !row[idxPcode]) return null;
 
+        // 콤마나 텍스트를 제거하고 순수 수치만 남기는 파싱 함수
         const parseNum = (val) => {
             if(!val) return 0;
             const clean = val.toString().replace(/,/g, '').trim();
             return parseInt(clean) || 0;
         };
+
+        const currentScore = parseNum(row[idxScore]);
+        const currentTotalScore = parseNum(row[idxTotalScore]);
+
+        // [주요 수정] 수식을 프로그램 내부에서 실시간으로 직접 연산 (대리점실적 / P코드합계)
+        // 분모가 0이 되는 에러(Division by zero) 완벽 방어 처리 내장
+        let computedRatio = 0;
+        if (currentTotalScore > 0) {
+            computedRatio = (currentScore / currentTotalScore) * 100;
+        }
 
         return {
             pcode: row[idxPcode] ? row[idxPcode].toString().trim() : '',
@@ -221,8 +251,8 @@ function processRows(rows) {
             address: row[idxAddress] ? row[idxAddress].toString().trim() : '공백',
             agency: row[idxAgency] ? row[idxAgency].toString().trim() : '',
             type: row[idxType] ? row[idxType].toString().trim() : '정보없음',
-            score: parseNum(row[idxScore]),        
-            total_score: parseNum(row[idxTotalScore]) 
+            score: currentScore,        
+            ratio: computedRatio // 연산된 정밀 점유비 퍼센트값 저장
         };
     }).filter(Boolean);
 
@@ -312,20 +342,23 @@ function renderTable(data) {
         const fullAddress = `${item.sido} ${item.sigungu} ${item.address}`.trim();
         const kakaoMapUrl = `https://map.kakao.com/link/search/${encodeURIComponent(fullAddress)}`;
 
+        // 실시간 연산된 값을 소수점 첫째자리까지 표현하여 반올림 오차 최소화
+        const formattedRatio = item.ratio.toFixed(1) + '%';
+
         tbody.innerHTML += `
             <tr>
                 <td><b>${item.pcode}</b></td>
-                <td><b>${item.name}</b></td>
+                <td title="${item.name}"><b>${item.name}</b></td>
                 <td>${item.dong}</td>
                 <td class="text-left">
                     <a href="${kakaoMapUrl}" target="_blank" class="map-link" title="카카오맵에서 위치 보기">
                         📍 ${item.address}
                     </a>
                 </td>
-                <td>${item.agency}</td>
+                <td title="${item.agency}">${item.agency}</td>
                 <td><span class="badge badge-type">${item.type}</span></td>
-                <td><span class="badge badge-score">${item.score.toLocaleString()}</span></td>
-                <td><span class="badge badge-total">${item.total_score.toLocaleString()}</span></td>
+                <td><span class="badge badge-score">${formattedRatio}</span></td>
+                <td><span class="badge badge-total">${item.score.toLocaleString()}</span></td>
             </tr>
         `;
     });
