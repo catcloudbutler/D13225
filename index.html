@@ -12,6 +12,14 @@
         .container { max-width: 1400px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         h2 { text-align: center; color: #111827; margin-bottom: 25px; }
 
+        /* 📂 [추가] 파일 첨부 및 분석 상태 제어판 스타일 */
+        .upload-section { background: #f0fdf4; border: 2px dashed #bbf7d0; border-radius: 8px; padding: 15px 20px; margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px; }
+        .upload-info { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #166534; }
+        .upload-info b { color: #15803d; }
+        .file-label { background-color: #16a34a; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: inline-block; transition: background 0.2s; }
+        .file-label:hover { background-color: #15803d; }
+        #csv-file { display: none; } /* 실제 파일 버튼은 숨기고 예쁜 라벨로 대체 */
+
         .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; background: #f9fafb; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 25px; }
         .filter-group { display: flex; flex-direction: column; position: relative; }
         .filter-group label { font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #4b5563; }
@@ -41,6 +49,16 @@
 
 <div class="container">
     <h2>🏢 판매점 데이터 통합 조회 시스템</h2>
+
+    <div class="upload-section">
+        <div class="upload-info">
+            <span>📊 <b>분석 대상 파일:</b> <span id="target-file-name" style="font-weight: bold; color: #2563eb;">전거래처_PS중복.csv (서버 자동 연동)</span></span>
+        </div>
+        <div>
+            <label for="csv-file" class="file-label">📂 다른 파일 첨부/교체</label>
+            <input type="file" id="csv-file" accept=".csv" onchange="handleFileSelect(event)">
+        </div>
+    </div>
 
     <div class="filter-grid">
         <div class="filter-group">
@@ -99,6 +117,7 @@ let csvData = [];
 let filters = { sido: "", sigungu: "", dong: "", type: "" };
 
 window.onload = function() {
+    // 기본 탑재된 깃허브 서버의 CSV 파일 로드 시도
     const currentUrl = window.location.href.split('?')[0].split('#')[0];
     const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/')) + '/';
     const targetFileUrl = baseUrl + '전거래처_PS중복.csv';
@@ -111,58 +130,79 @@ window.onload = function() {
     .then(buffer => {
         const decoder = new TextDecoder('euc-kr');
         const csvText = decoder.decode(buffer);
-        
-        Papa.parse(csvText, {
-            header: false,
-            skipEmptyLines: true,
-            complete: function(results) {
-                const rows = results.data;
-                if(!rows || rows.length <= 1) {
-                    document.getElementById('status-msg').innerHTML = `⚠️ 엑셀 파일 내에 유효한 데이터가 존재하지 않습니다.`;
-                    return;
-                }
-
-                // 첫 줄(헤더 제목줄)을 제외하고 두 번째 줄부터 안전하게 변환 실행
-                const dataRows = rows.slice(1);
-
-                csvData = dataRows.map(row => {
-                    // 데이터 행이 깨졌거나 비어있으면 건너뛰기
-                    if (!row || row.length < 2 || !row[0]) return null;
-
-                    // 숫자에 콤마(,)가 포함되어 있을 경우 안전하게 제거하는 가이드 함수
-                    const parseNum = (val) => {
-                        if(!val) return 0;
-                        const clean = val.toString().replace(/,/g, '').trim();
-                        return parseInt(clean) || 0;
-                    };
-
-                    return {
-                        pcode: row[0] ? row[0].toString().trim() : '',
-                        name: row[1] ? row[1].toString().trim() : '',
-                        sido: row[2] ? row[2].toString().trim() : '',
-                        sigungu: row[3] ? row[3].toString().trim() : '',
-                        dong: row[4] ? row[4].toString().trim() : '',
-                        address: row[5] ? row[5].toString().trim() : '공백',
-                        agency: row[6] ? row[6].toString().trim() : '',
-                        type: row[7] ? row[7].toString().trim() : '정보없음',
-                        score: parseNum(row[8]),
-                        total_score: parseNum(row[9])
-                    };
-                }).filter(Boolean); // null 값(불량 데이터) 제거
-
-                if(csvData.length === 0) {
-                    document.getElementById('status-msg').innerHTML = `⚠️ 파일은 읽었으나 매칭할 수 있는 정상 데이터 행이 없습니다.`;
-                    return;
-                }
-
-                initFilters();
-            }
-        });
+        processCSV(csvText);
     })
     .catch(err => {
-        document.getElementById('status-msg').innerHTML = `<span style="color:#ef4444;">⚠️ 연동 실패<br>[상세 정보]: ${err.message}</span>`;
+        document.getElementById('status-msg').innerHTML = `<span style="color:#ef4444;">⚠️ 기본 서버 데이터 로드 실패<br>[원인]: ${err.message}<br><br>💡 우측 상단의 '다른 파일 첨부/교체' 버튼을 눌러 컴퓨터에 있는 CSV 파일을 직접 선택해 분석할 수 있습니다!</span>`;
     });
 };
+
+// 📂 [추가] 사용자가 직접 컴퓨터에서 다른 CSV 파일을 선택했을 때 가동되는 핸들러
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    document.getElementById('target-file-name').textContent = `${file.name} (사용자 첨부 파일)`;
+    document.getElementById('table-body').innerHTML = `<tr><td id="status-msg" colspan="10" style="padding:30px; color:#16a34a; font-weight:bold;">📂 새 첨부 파일을 정밀 분석하는 중...</td></tr>`;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        // 인코딩 문제 방지를 위해 배열버퍼로 읽은 뒤 euc-kr 변환
+        const buffer = e.target.result;
+        const decoder = new TextDecoder('euc-kr');
+        const csvText = decoder.decode(buffer);
+        processCSV(csvText);
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+// 공통 CSV 파싱 및 엔진 처리 함수
+function processCSV(csvText) {
+    Papa.parse(csvText, {
+        header: false,
+        skipEmptyLines: true,
+        complete: function(results) {
+            const rows = results.data;
+            if(!rows || rows.length <= 1) {
+                document.getElementById('status-msg').innerHTML = `⚠️ 엑셀 파일 내에 유효한 데이터가 존재하지 않습니다.`;
+                return;
+            }
+
+            const dataRows = rows.slice(1);
+
+            csvData = dataRows.map(row => {
+                if (!row || row.length < 2 || !row[0]) return null;
+
+                const parseNum = (val) => {
+                    if(!val) return 0;
+                    const clean = val.toString().replace(/,/g, '').trim();
+                    return parseInt(clean) || 0;
+                };
+
+                return {
+                    pcode: row[0] ? row[0].toString().trim() : '',
+                    name: row[1] ? row[1].toString().trim() : '',
+                    sido: row[2] ? row[2].toString().trim() : '',
+                    sigungu: row[3] ? row[3].toString().trim() : '',
+                    dong: row[4] ? row[4].toString().trim() : '',
+                    address: row[5] ? row[5].toString().trim() : '공백',
+                    agency: row[6] ? row[6].toString().trim() : '',
+                    type: row[7] ? row[7].toString().trim() : '정보없음',
+                    score: parseNum(row[8]),
+                    total_score: parseNum(row[9])
+                };
+            }).filter(Boolean);
+
+            if(csvData.length === 0) {
+                document.getElementById('status-msg').innerHTML = `⚠️ 파일은 읽었으나 매칭할 수 있는 정상 데이터 행이 없습니다.`;
+                return;
+            }
+
+            resetAllFilters(); // 파일이 바뀌면 필터 조건 초기화
+            initFilters();
+        }
+    });
+}
 
 function initFilters() {
     buildDropdown('sido', csvData);
