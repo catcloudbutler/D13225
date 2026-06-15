@@ -30,18 +30,16 @@
         .btn-reset { padding: 10px; background-color: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; margin-top: auto; }
         .btn-reset:hover { background-color: #dc2626; }
 
-        /* 📱 모바일 스크롤 터치 최적화 레이어 */
         .table-container { 
             overflow-x: auto; 
             border: 1px solid #e5e7eb; 
             border-radius: 8px; 
             max-height: 600px; 
             overflow-y: auto; 
-            -webkit-overflow-scrolling: touch; /* 모바일 부드러운 스크롤 */
+            -webkit-overflow-scrolling: touch; 
             background: #ffffff;
         }
         
-        /* 📱 테이블 내용이 찌그러지지 않도록 절대 너비 및 정렬 고정 */
         table { 
             width: 100%; 
             border-collapse: collapse; 
@@ -53,23 +51,33 @@
         th, td { 
             padding: 12px 10px; 
             border-bottom: 1px solid #e5e7eb; 
-            white-space: nowrap; /* 🚀 글자가 밑으로 쪼개져서 떨어지는 현상 원천 방지 */
+            white-space: nowrap; 
             vertical-align: middle;
         }
         
         th { background-color: #f3f4f6; color: #374151; font-weight: 700; position: sticky; top: 0; z-index: 10; }
         tr:hover { background-color: #f9fafb; }
         
-        /* 🚀 각 열(Column)별 최소 너비 확보로 글자 겹침 방지 */
-        th:nth-child(1), td:nth-child(1) { min-width: 80px; }  /* P코드 */
-        th:nth-child(2), td:nth-child(2) { min-width: 130px; white-space: normal; word-break: keep-all; } /* 거래처명 */
-        th:nth-child(3), td:nth-child(3) { min-width: 80px; }  /* 읍면동 */
-        th:nth-child(4), td:nth-child(4) { min-width: 250px; white-space: normal; word-break: keep-all; } /* 상세주소 */
-        th:nth-child(5), td:nth-child(5) { min-width: 120px; white-space: normal; word-break: keep-all; } /* 대리점명 */
-        th:nth-child(6), td:nth-child(6) { min-width: 90px; }  /* 중복여부 */
-        th:nth-child(7), td:nth-child(7) { min-width: 90px; }  /* 대리점실적 */
-        th:nth-child(8), td:nth-child(8) { min-width: 90px; }  /* P코드합계 */
+        th:nth-child(1), td:nth-child(1) { min-width: 80px; }  
+        th:nth-child(2), td:nth-child(2) { min-width: 130px; white-space: normal; word-break: keep-all; } 
+        th:nth-child(3), td:nth-child(3) { min-width: 80px; }  
+        th:nth-child(4), td:nth-child(4) { min-width: 250px; white-space: normal; word-break: keep-all; } 
+        th:nth-child(5), td:nth-child(5) { min-width: 120px; white-space: normal; word-break: keep-all; } 
+        th:nth-child(6), td:nth-child(6) { min-width: 90px; }  
+        th:nth-child(7), td:nth-child(7) { min-width: 90px; }  
+        th:nth-child(8), td:nth-child(8) { min-width: 90px; }  
         
+        /* 🚀 카카오맵 링크 스타일 꾸미기 */
+        .map-link {
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .map-link:hover {
+            text-decoration: underline;
+            color: #1d4ed8;
+        }
+
         .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-weight: bold; white-space: nowrap; }
         .badge-total { background-color: #e0f2fe; color: #0369a1; }
         .badge-score { background-color: #dcfce7; color: #166534; }
@@ -77,7 +85,6 @@
         .text-left { text-align: left; }
         .total-count { font-size: 16px; font-weight: bold; color: #2563eb; margin-bottom: 10px; }
 
-        /* 모바일 화면 전용 스크롤 팁 안내 안내 */
         .scroll-tip { display: none; font-size: 11px; color: #9ca3af; text-align: right; margin-bottom: 5px; }
         @media (max-width: 768px) {
             .scroll-tip { display: block; }
@@ -126,7 +133,7 @@
     <div>
         <div style="display: flex; justify-content: space-between; align-items: flex-end;">
             <div class="total-count">📊 조회된 판매점 목록: <span id="count">0</span>건</div>
-            <div class="scroll-tip">💡 좌우로 밀어서 표를 확인하세요</div>
+            <div class="scroll-tip">💡 주소를 누르면 카카오맵으로 연결됩니다 / 좌우 스크롤 가능</div>
         </div>
         <div class="table-container">
             <table>
@@ -344,12 +351,23 @@ function renderTable(data) {
 
     const limitData = data.slice(0, 500); 
     limitData.forEach(item => {
+        // 🚀 [핵심 수정] 검색용 전체 주소 문자열을 조합합니다. (시도 + 시군구 + 상세주소)
+        // 주소 데이터가 깨졌거나 공백인 상황을 대비해 안전하게 fallback 처리합니다.
+        const fullAddress = `${item.sido} ${item.sigungu} ${item.address}`.trim();
+        
+        // 카카오맵 검색 연동 URL 생성 (인코딩 처리 포함)
+        const kakaoMapUrl = `https://map.kakao.com/link/search/${encodeURIComponent(fullAddress)}`;
+
         tbody.innerHTML += `
             <tr>
                 <td><b>${item.pcode}</b></td>
                 <td class="text-left"><b>${item.name}</b></td>
                 <td>${item.dong}</td>
-                <td class="text-left" style="color: #2563eb;">${item.address}</td>
+                <td class="text-left">
+                    <a href="${kakaoMapUrl}" target="_blank" class="map-link" title="카카오맵에서 위치 보기">
+                        📍 ${item.address}
+                    </a>
+                </td>
                 <td class="text-left">${item.agency}</td>
                 <td><span class="badge badge-type">${item.type}</span></td>
                 <td><span class="badge badge-score">${item.score.toLocaleString()}</span></td>
