@@ -9,10 +9,18 @@
     
     <style>
         body { font-family: 'Malgun Gothic', sans-serif; padding: 15px; background-color: #f3f4f6; color: #1f2937; margin: 0; }
-        .container { max-width: 1400px; margin: 0 auto; background: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        h2 { text-align: center; color: #111827; margin-bottom: 20px; font-size: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; background: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); position: relative; }
+        
+        /* 제목 영역 레이아웃 수정 및 관리자 버튼 추가 */
+        .header-area { display: flex; justify-content: center; align-items: center; position: relative; margin-bottom: 20px; min-height: 40px; }
+        h2 { text-align: center; color: #111827; margin: 0; font-size: 20px; }
+        
+        /* 토글 방식의 관리자 버튼 스타일 */
+        .btn-admin-toggle { position: absolute; right: 0; top: 50%; transform: translateY(-50%); background: #e5e7eb; color: #4b5563; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; transition: all 0.2s; }
+        .btn-admin-toggle:hover { background: #d1d5db; color: #1f2937; }
 
-        .upload-section { background: #f0fdf4; border: 2px dashed #bbf7d0; border-radius: 8px; padding: 12px 15px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+        /* 업로드 섹션 기본 숨김 및 애니메이션 효과 */
+        .upload-section { background: #f0fdf4; border: 2px dashed #bbf7d0; border-radius: 8px; padding: 12px 15px; margin-bottom: 20px; display: none; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
         .upload-info { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #166534; }
         .upload-info b { color: #15803d; }
         .file-label { background-color: #16a34a; color: white; padding: 8px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; display: inline-block; transition: background 0.2s; white-space: nowrap; }
@@ -75,7 +83,9 @@
         @media (max-width: 768px) {
             body { padding: 8px; }
             .container { padding: 12px; border-radius: 8px; }
-            h2 { font-size: 17px; margin-bottom: 15px; }
+            .header-area { flex-direction: column; gap: 8px; min-height: auto; margin-bottom: 15px; }
+            .btn-admin-toggle { position: relative; transform: none; top: auto; right: auto; width: 100%; text-align: center; }
+            h2 { font-size: 17px; }
             .filter-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 10px; }
             .btn-reset { grid-column: span 2; margin-top: 5px; }
             table { font-size: 12px; }
@@ -87,9 +97,12 @@
 <body>
 
 <div class="container">
-    <h2>🏢 판매점 데이터 통합 조회 시스템</h2>
+    <div class="header-area">
+        <h2>🏢 판매점 데이터 통합 조회 시스템</h2>
+        <button class="btn-admin-toggle" onclick="toggleAdminSection()">🛠️ 관리자 설정</button>
+    </div>
 
-    <div class="upload-section">
+    <div class="upload-section" id="admin-upload-section">
         <div class="upload-info">
             <span>📊 <b>분석 대상 파일:</b> <span id="target-file-name" style="font-weight: bold; color: #2563eb;">전거래처_PS중복.csv (서버 자동 연동)</span></span>
         </div>
@@ -154,10 +167,33 @@ let csvData = [];
 let filters = { sido: "", sigungu: "", dong: "", type: "" };
 let pcodeCounts = {}; 
 
+// [변경 완료] 관리자 설정 토글 시 비밀번호 검증 기능 추가
+function toggleAdminSection() {
+    const adminSection = document.getElementById('admin-upload-section');
+    
+    // 현재 닫혀있어서 켜려고 할 때만 비밀번호를 묻습니다.
+    if (adminSection.style.display === 'none' || adminSection.style.display === '') {
+        const password = prompt("관리자 비밀번호를 입력해주세요:");
+        
+        if (password === "d13225#") {
+            adminSection.style.display = 'flex';
+        } else if (password !== null) { 
+            // 취소 버튼을 누른 게 아니라 틀린 암호를 입력했을 때만 알림
+            alert("비밀번호가 올바르지 않습니다.");
+        }
+    } else {
+        // 이미 켜져있는 상태라면 비밀번호 확인 없이 바로 닫습니다.
+        adminSection.style.display = 'none';
+    }
+}
+
 window.onload = function() {
     const currentUrl = window.location.href.split('?')[0].split('#')[0];
     const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/')) + '/';
     const targetFileUrl = baseUrl + '전거래처_PS중복.csv';
+
+    // 업로드창 초기 상태 숨김 강제 적용
+    document.getElementById('admin-upload-section').style.display = 'none';
 
     fetch(targetFileUrl)
     .then(res => {
@@ -361,7 +397,6 @@ function renderTable(data) {
         const typeBadgeClass = item.type === 'PS_전속' ? 'badge badge-ps-exclusive' : 'badge badge-type';
         const agencyBadgeClass = item.agency === '광장대리점' ? 'badge badge-gj-agency' : '';
 
-        // [변경 핵심] 점유비 50% 이하 조건부 인라인 스타일 부여
         let ratioStyle = '';
         if (item.ratio <= 50) {
             ratioStyle = 'style="background-color: #FFC7CE !important; color: #9C0006 !important; border: none;"';
