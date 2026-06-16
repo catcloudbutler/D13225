@@ -35,7 +35,7 @@
         table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13px; text-align: center; table-layout: fixed; }
         
         /* 컬럼별 고정 너비 지정 */
-        th:nth-child(1), td:nth-child(1) { width: 85px; }  /* P코드 */
+        th:nth-child(1), td:nth-child(1) { width: 95px; }  /* P코드 */
         th:nth-child(2), td:nth-child(2) { width: 140px; } /* 거래처명 */
         th:nth-child(3), td:nth-child(3) { width: 80px; }  /* 읍면동 */
         th:nth-child(4), td:nth-child(4) { width: auto; }   /* 상세주소 */
@@ -50,7 +50,7 @@
         td.text-left { text-align: left; white-space: normal; word-break: break-all; } 
         tr:hover { background-color: #f1f5f9; }
         
-        /* P코드가 중복일 경우 전체 행 배경색 지정 */
+        /* P코드가 중복일 경우 전체 행 배경색 (#FFFFCC) */
         tr.duplicate-row { background-color: #FFFFCC !important; }
         tr.duplicate-row:hover { background-color: #fef08a !important; }
 
@@ -58,16 +58,16 @@
         .map-link { color: #2563eb; text-decoration: none; font-weight: 500; display: inline-block; }
         .map-link:hover { text-decoration: underline; color: #1d4ed8; }
 
-        /* 배지 공통 및 개별 맞춤 디자인 */
+        /* 배지 스타일 디자인 */
         .badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; display: inline-block; }
-        .badge-total { background-color: #dcfce7; color: #166534; }  /* 대리점실적 */
-        .badge-score { background-color: #e0f2fe; color: #0369a1; }  /* 점유비 */
+        .badge-total { background-color: #dcfce7; color: #166534; }  
+        .badge-score { background-color: #e0f2fe; color: #0369a1; }  
         .badge-type { background-color: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db; }
         
-        /* [요청 조건] PS_전속 전용: 빨간배경 + 노란글씨 */
+        /* PS_전속: 빨간배경 + 노란글씨 */
         .badge-ps-exclusive { background-color: #ef4444 !important; color: #fef08a !important; border: none !important; }
         
-        /* [요청 조건] 광장대리점 전용: 남색배경 + 노란글씨 */
+        /* 광장대리점: 남색배경 + 노란글씨 */
         .badge-gj-agency { background-color: #1e3a8a !important; color: #fef08a !important; }
 
         .total-count { font-size: 14px; font-weight: bold; color: #2563eb; margin-bottom: 8px; }
@@ -152,7 +152,7 @@
 <script>
 let csvData = [];
 let filters = { sido: "", sigungu: "", dong: "", type: "" };
-let pcodeCounts = {}; // P코드 중복 여부를 실시간 연산하기 위한 카운팅 객체
+let pcodeCounts = {}; 
 
 window.onload = function() {
     const currentUrl = window.location.href.split('?')[0].split('#')[0];
@@ -214,30 +214,35 @@ function processRows(rows) {
         return;
     }
 
+    // 공백 및 노이즈 제거 후 헤더 파싱
     const headerRow = rows[0].map(h => h ? h.toString().trim().replace(/\s+/g, '') : '');
     
-    const idxPcode = headerRow.findIndex(h => h.includes('P코드')) !== -1 ? headerRow.findIndex(h => h.includes('P코드')) : 0;
-    const idxName = headerRow.findIndex(h => h.includes('거래처명') || h.includes('거래처')) !== -1 ? headerRow.findIndex(h => h.includes('거래처명') || h.includes('거래처')) : 1;
-    const idxSido = headerRow.findIndex(h => h.includes('시도')) !== -1 ? headerRow.findIndex(h => h.includes('시도')) : 2;
-    const idxSigungu = headerRow.findIndex(h => h.includes('시군구')) !== -1 ? headerRow.findIndex(h => h.includes('시군구')) : 3;
-    const idxDong = headerRow.findIndex(h => h.includes('읍면동')) !== -1 ? headerRow.findIndex(h => h.includes('읍면동')) : 4;
-    const idxAddress = headerRow.findIndex(h => h.includes('주소') || h.includes('상세주소')) !== -1 ? headerRow.findIndex(h => h.includes('주소') || h.includes('상세주소')) : 5;
-    const idxType = headerRow.findIndex(h => h.includes('중복여부') || h.includes('중복')) !== -1 ? headerRow.findIndex(h => h.includes('중복여부') || h.includes('중복')) : 7;
+    // [핵심 변경] 사용자가 추가한 A열(인덱스 0) 순번을 무시하고, 진짜 P코드가 위치한 B열(인덱스 1)을 강제 지정합니다.
+    const idxPcode = 1; 
     
-    const idxTotalScore = headerRow.findIndex(h => h.includes('P코드합계') || h.includes('합계')) !== -1 ? headerRow.findIndex(h => h.includes('P코드합계') || h.includes('합계')) : 9;
-    const idxScore = headerRow.findIndex(h => h.includes('대리점실적') || h.includes('실적')) !== -1 ? headerRow.findIndex(h => h.includes('대리점실적') || h.includes('실적')) : 8;
+    // 타 컬럼 인덱스 매칭 재정렬 (B열이 P코드이므로 거래처명 등 자동 감지 인덱스 안정성 보강)
+    const idxName = headerRow.findIndex((h, i) => i > 0 && (h.includes('거래처명') || h.includes('거래처'))) !== -1 ? headerRow.findIndex((h, i) => i > 0 && (h.includes('거래처명') || h.includes('거래처'))) : 2;
+    const idxSido = headerRow.findIndex(h => h.includes('시도')) !== -1 ? headerRow.findIndex(h => h.includes('시도')) : 3;
+    const idxSigungu = headerRow.findIndex(h => h.includes('시군구')) !== -1 ? headerRow.findIndex(h => h.includes('시군구')) : 4;
+    const idxDong = headerRow.findIndex(h => h.includes('읍면동')) !== -1 ? headerRow.findIndex(h => h.includes('읍면동')) : 5;
+    const idxAddress = headerRow.findIndex(h => h.includes('주소') || h.includes('상세주소')) !== -1 ? headerRow.findIndex(h => h.includes('주소') || h.includes('상세주소')) : 6;
+    const idxType = headerRow.findIndex(h => h.includes('중복여부') || h.includes('중복')) !== -1 ? headerRow.findIndex(h => h.includes('중복여부') || h.includes('중복')) : 8;
+    
+    const idxTotalScore = headerRow.findIndex(h => h.includes('P코드합계') || h.includes('합계')) !== -1 ? headerRow.findIndex(h => h.includes('P코드합계') || h.includes('합계')) : 10;
+    const idxScore = headerRow.findIndex(h => h.includes('대리점실적') || h.includes('실적')) !== -1 ? headerRow.findIndex(h => h.includes('대리점실적') || h.includes('실적')) : 9;
 
-    let idxAgency = headerRow.findIndex(h => h === '대리점명' || h === '대리점');
+    let idxAgency = headerRow.findIndex((h, i) => i > 0 && (h === '대리점명' || h === '대리점'));
     if(idxAgency === -1) { 
-        idxAgency = headerRow.findIndex(h => h.includes('대리점') && !h.includes('코드') && !h.includes('실적'));
+        idxAgency = headerRow.findIndex((h, i) => i > 0 && h.includes('대리점') && !h.includes('코드') && !h.includes('실적'));
     }
-    if(idxAgency === -1) idxAgency = 6; 
+    if(idxAgency === -1) idxAgency = 7; 
 
     const dataRows = rows.slice(1);
 
-    pcodeCounts = {}; // 카운터 초기화
+    pcodeCounts = {}; 
 
     csvData = dataRows.map(row => {
+        // 행이 비어있거나 B열(P코드) 값이 없으면 패스
         if (!row || row.length < 2 || !row[idxPcode]) return null;
 
         const parseNum = (val) => {
@@ -248,9 +253,11 @@ function processRows(rows) {
 
         const currentScore = parseNum(row[idxScore]);
         const currentTotalScore = parseNum(row[idxTotalScore]);
+        
+        // [B열 추출 보장] 진짜 P코드 문자열 확보
         const pcodeVal = row[idxPcode].toString().trim();
 
-        // P코드 빈도 계산 (행 단위 색상 반전을 위해 수집)
+        // B열의 진짜 P코드를 기준으로 중복 여부 체크용 카운팅 진행
         pcodeCounts[pcodeVal] = (pcodeCounts[pcodeVal] || 0) + 1;
 
         let computedRatio = 0;
@@ -259,7 +266,7 @@ function processRows(rows) {
         }
 
         return {
-            pcode: pcodeVal,
+            pcode: pcodeVal, // B열 값 적용 완료
             name: row[idxName] ? row[idxName].toString().trim() : '',
             sido: row[idxSido] ? row[idxSido].toString().trim() : '',
             sigungu: row[idxSigungu] ? row[idxSigungu].toString().trim() : '',
@@ -359,13 +366,13 @@ function renderTable(data) {
         const kakaoMapUrl = `https://map.kakao.com/link/search/${encodeURIComponent(fullAddress)}`;
         const formattedRatio = item.ratio.toFixed(1) + '%';
 
-        // [요청 조건] P코드가 중복(전체 로드 데이터 내에서 2회 이상 발생)될 경우 행 스타일 클래스 부여
+        // B열의 P코드가 파일 내에서 2회 이상 발견될 경우 행 전체 배경색 적용 (#FFFFCC)
         const isDuplicateRow = pcodeCounts[item.pcode] > 1 ? 'class="duplicate-row"' : '';
 
-        // [요청 조건] 중복여부가 'PS_전속'일 경우 스타일 전용 클래스 분기 처리
+        // 중복여부가 'PS_전속'일 경우 전용 배지 스타일 적용
         const typeBadgeClass = item.type === 'PS_전속' ? 'badge badge-ps-exclusive' : 'badge badge-type';
 
-        // [요청 조건] 대리점명이 '광장대리점'일 경우 스타일 전용 클래스 분기 처리
+        // 대리점명이 '광장대리점'일 경우 전용 배지 스타일 적용
         const agencyBadgeClass = item.agency === '광장대리점' ? 'badge badge-gj-agency' : '';
 
         tbody.innerHTML += `
