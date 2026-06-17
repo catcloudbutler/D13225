@@ -80,6 +80,14 @@
 
         .total-count { font-size: 14px; font-weight: bold; color: #2563eb; margin-bottom: 8px; }
 
+        /* [추가] 관리자 미인증 시 텍스트 드래그 방지용 CSS 클래스 */
+        .no-select {
+            -webkit-user-select: none; /* Safari */
+            -moz-user-select: none;    /* Firefox */
+            -ms-user-select: none;     /* IE/Edge */
+            user-select: none;         /* 표준 */
+        }
+
         @media (max-width: 768px) {
             body { padding: 8px; }
             .container { padding: 12px; border-radius: 8px; }
@@ -94,12 +102,12 @@
         }
     </style>
 </head>
-<body>
+<body class="no-select">
 
 <div class="container">
     <div class="header-area">
         <h2>🏢 판매점 데이터 통합 조회 시스템</h2>
-        <button class="btn-admin-toggle" onclick="toggleAdminSection()">🛠️ 관리자 설정</button>
+        <button class="btn-admin-toggle" id="admin-btn" onclick="toggleAdminSection()">🛠️ 관리자 설정</button>
     </div>
 
     <div class="upload-section" id="admin-upload-section">
@@ -166,24 +174,67 @@
 let csvData = [];
 let filters = { sido: "", sigungu: "", dong: "", type: "" };
 let pcodeCounts = {}; 
+let isAdminAuthenticated = false; // [추가] 관리자 인증 여부 상태 추적 변수
 
-// [변경 완료] 관리자 설정 토글 시 비밀번호 검증 기능 추가
+// [변경 핵심] 보안 관리를 위한 이벤트 차단 및 관리자 전용 허용 스크립트
+// 1. 우클릭 차단
+document.addEventListener('contextmenu', function(e) {
+    if (!isAdminAuthenticated) {
+        e.preventDefault();
+    }
+});
+
+// 2. 복사 금지 (Ctrl+C 등)
+document.addEventListener('copy', function(e) {
+    if (!isAdminAuthenticated) {
+        e.preventDefault();
+    }
+});
+
+// 3. 단축키 방지 (F12 개발자 도구, Ctrl+Shift+I 등 소스 가리기 목적)
+document.addEventListener('keydown', function(e) {
+    if (!isAdminAuthenticated) {
+        // F12 차단
+        if (e.keyCode === 123) {
+            e.preventDefault();
+            return false;
+        }
+        // Ctrl+Shift+I / Ctrl+Shift+C / Ctrl+Shift+J / Ctrl+U(소스보기) 차단
+        if (e.ctrlKey && (e.shiftKey && (e.keyCode === 73 || e.keyCode === 67 || e.keyCode === 74) || e.keyCode === 85)) {
+            e.preventDefault();
+            return false;
+        }
+    }
+});
+
+// 관리자 설정 토글 및 비밀번호 검증 함수
 function toggleAdminSection() {
     const adminSection = document.getElementById('admin-upload-section');
+    const adminBtn = document.getElementById('admin-btn');
     
-    // 현재 닫혀있어서 켜려고 할 때만 비밀번호를 묻습니다.
-    if (adminSection.style.display === 'none' || adminSection.style.display === '') {
+    // 현재 로그인되지 않은 상태에서 열려고 할 때 비밀번호를 묻습니다.
+    if (!isAdminAuthenticated) {
         const password = prompt("관리자 비밀번호를 입력해주세요:");
         
         if (password === "d13225#") {
+            isAdminAuthenticated = true;
             adminSection.style.display = 'flex';
+            adminBtn.textContent = "🔓 관리자 모드 (종료)";
+            adminBtn.style.background = "#10b981"; // 관리자 활성화 상태일 때 초록색 버튼으로 변경
+            adminBtn.style.color = "#ffffff";
+            document.body.classList.remove('no-select'); // 드래그 금지 풀기
+            alert("관리자 인증 성공! 우클릭 및 데이터 복사 제한이 해제되었습니다.");
         } else if (password !== null) { 
-            // 취소 버튼을 누른 게 아니라 틀린 암호를 입력했을 때만 알림
             alert("비밀번호가 올바르지 않습니다.");
         }
     } else {
-        // 이미 켜져있는 상태라면 비밀번호 확인 없이 바로 닫습니다.
+        // 이미 켜져있는 상태라면 다시 잠금 모드로 전환하고 숨깁니다.
+        isAdminAuthenticated = false;
         adminSection.style.display = 'none';
+        adminBtn.textContent = "🛠️ 관리자 설정";
+        adminBtn.style.background = "#e5e7eb";
+        adminBtn.style.color = "#4b5563";
+        document.body.classList.add('no-select'); // 드래그 금지 다시 설정
     }
 }
 
