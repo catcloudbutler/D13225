@@ -9,7 +9,19 @@
     <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=47d0f2bd29fbb279cb461bdad2cf1097&libraries=services"></script>
     
     <style>
-        body { font-family: 'Malgun Gothic', sans-serif; padding: 15px; background-color: #f3f4f6; color: #1f2937; margin: 0; }
+        body { 
+            font-family: 'Malgun Gothic', sans-serif; 
+            padding: 15px; 
+            background-color: #f3f4f6; 
+            color: #1f2937; 
+            margin: 0; 
+            
+            /* 🔒 [보안] 모바일 및 PC 전체 복사/드래그 금지 CSS */
+            -webkit-user-select: none;  /* 사파리/크롬 모바일 */
+            -moz-user-select: none;     /* 파이어폭스 */
+            -ms-user-select: none;      /* 익스플로러 */
+            user-select: none;          /* 표준 속성 */
+        }
         .container { max-width: 1400px; margin: 0 auto; background: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         h2 { text-align: center; color: #111827; margin-bottom: 20px; font-size: 20px; }
 
@@ -20,11 +32,18 @@
         .file-label:hover { background-color: #15803d; }
         #csv-file { display: none; }
 
-        /* 지도 영역 스타일 */
-        .map-section { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; margin-bottom: 20px; }
-        .map-title { font-size: 13px; font-weight: bold; margin-bottom: 6px; color: #374151; display: flex; justify-content: space-between; align-items: center; }
-        #map { width: 100%; height: 300px; border-radius: 6px; border: 1px solid #d1d5db; }
+        /* 지도 및 내 위치 검색 영역 스타일 */
+        .map-section { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 20px; }
+        .map-title { font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #374151; display: flex; justify-content: space-between; align-items: center; }
         .map-hint { font-size: 11px; color: #6b7280; font-weight: normal; }
+        
+        /* 📍 내 위치 장소 검색창 스타일 */
+        .location-search-box { display: flex; gap: 6px; margin-bottom: 10px; }
+        .location-search-input { flex: 1; padding: 8px 12px; border: 1px solid #2563eb; border-radius: 6px; font-size: 13px; outline: none; }
+        .btn-location-search { padding: 8px 16px; background-color: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; white-space: nowrap; }
+        .btn-location-search:hover { background-color: #1d4ed8; }
+
+        #map { width: 100%; height: 300px; border-radius: 6px; border: 1px solid #d1d5db; }
 
         .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px; }
         .filter-group { display: flex; flex-direction: column; position: relative; }
@@ -110,9 +129,15 @@
 
     <div class="map-section">
         <div class="map-title">
-            <span>📍 내 위치 기준 지도 보정</span>
-            <span class="map-hint">💡 GPS가 안 맞으면 지도를 움직이세요. 중심점 기준으로 자동 재정렬됩니다.</span>
+            <span>📍 내 기준위치 보정 및 검색</span>
+            <span class="map-hint">💡 장소를 검색하거나 지도를 움직이면 그 자리가 '내 위치'가 됩니다.</span>
         </div>
+        
+        <div class="location-search-box">
+            <input type="text" id="map-search-keyword" class="location-search-input" placeholder="이동할 기준 장소나 주소를 입력하세요 (예: 강남역, 대전시청)" onkeydown="if(event.keyCode === 13) searchNewLocation();">
+            <button class="btn-location-search" onclick="searchNewLocation()">위치 이동</button>
+        </div>
+        
         <div id="map"></div>
     </div>
 
@@ -174,12 +199,12 @@
 let csvData = [];
 let filters = { sido: "", sigungu: "", dong: "", type: "" };
 let pcodeCounts = {}; 
-let userCoords = { lat: 37.5665, lng: 126.9780 }; // 기본값 서울시청
+let userCoords = { lat: 37.5665, lng: 126.9780 }; 
 let geocoder = null;
+let placesService = null; // 장소 검색용 서비스 객체
 let map = null;
 let centerMarker = null;
 
-// 카카오맵 및 요소 초기화
 function initMap() {
     const mapContainer = document.getElementById('map');
     if (!mapContainer || typeof kakao === 'undefined') return;
@@ -191,26 +216,63 @@ function initMap() {
 
     map = new kakao.maps.Map(mapContainer, mapOption);
     geocoder = new kakao.maps.services.Geocoder();
+    placesService = new kakao.maps.services.Places(); // 키워드 검색 객체 초기화
 
-    // 지도 중심점에 내 위치 마커 생성
     centerMarker = new kakao.maps.Marker({
         position: map.getCenter()
     });
     centerMarker.setMap(map);
 
-    // [정확도 극대화 핵심] 사용자가 지도를 움직여 멈췄을 때 중심 좌표를 내 GPS 좌표로 강제 업데이트
+    // 지도를 드래그해서 움직였을 때 이벤트
     kakao.maps.event.addListener(map, 'dragend', function() {
-        const latlng = map.getCenter();
-        userCoords.lat = latlng.getLat();
-        userCoords.lng = latlng.getLng();
-        
-        // 마커 위치 이동
-        centerMarker.setPosition(latlng);
-        document.getElementById('gps-msg').textContent = `🎯 지도 중심점 기준으로 거리 계산 보정됨`;
+        updateCenterCoordinates(map.getCenter(), `🎯 지도 중심점 기준으로 거리 계산 보정됨`);
+    });
+}
 
-        // 거리 재연산 및 화면 갱신
-        recalculateDistances();
-        applyFilters();
+// 🎯 기준위치 좌표 변경 및 거리 재계산 통합 처리 함수
+function updateCenterCoordinates(latlng, message) {
+    userCoords.lat = latlng.getLat();
+    userCoords.lng = latlng.getLng();
+    
+    centerMarker.setPosition(latlng);
+    document.getElementById('gps-msg').textContent = message;
+
+    recalculateDistances();
+    applyFilters();
+}
+
+// 🔍 [장소/주소 통합 검색] 기능
+function searchNewLocation() {
+    const keyword = document.getElementById('map-search-keyword').value.trim();
+    if (!keyword) {
+        alert('이동할 장소나 주소를 입력해 주세요.');
+        return;
+    }
+
+    if (!placesService || !geocoder) return;
+
+    // 1단계: 키워드(장소명) 검색 먼저 수행
+    placesService.keywordSearch(keyword, function(data, status) {
+        if (status === kakao.maps.services.Status.OK) {
+            // 가장 연관도 높은 첫 번째 검색 결과로 이동
+            const firstResult = data[0];
+            const moveLatLng = new kakao.maps.LatLng(firstResult.y, firstResult.x);
+            
+            map.setCenter(moveLatLng);
+            updateCenterCoordinates(moveLatLng, `🔎 검색 위치로 이동됨: ${firstResult.place_name}`);
+        } else {
+            // 장소명 검색 실패 시 2단계: 주소 검색으로 재시도
+            geocoder.addressSearch(keyword, function(result, addressStatus) {
+                if (addressStatus === kakao.maps.services.Status.OK) {
+                    const moveLatLng = new kakao.maps.LatLng(result[0].y, result[0].x);
+                    
+                    map.setCenter(moveLatLng);
+                    updateCenterCoordinates(moveLatLng, `🔎 검색 주소로 이동됨: ${keyword}`);
+                } else {
+                    alert('입력하신 장소나 주소를 찾을 수 없습니다. 정확히 입력해 주세요.');
+                }
+            });
+        }
     });
 }
 
@@ -255,9 +317,8 @@ function getUserLocation(isAuto = false) {
                     lat: position.coords.latitude,
                     lng: position.coords.longitude
                 };
-                msgEl.textContent = `✅ GPS 수신 완료 (오차 발생 시 지도를 움직이세요)`;
+                msgEl.textContent = `✅ GPS 수신 완료 (오차 발생 시 지도를 움직이거나 검색하세요)`;
                 
-                // 카카오 지도가 로드되어 있다면 중심 변경
                 if(map) {
                     const newPos = new kakao.maps.LatLng(userCoords.lat, userCoords.lng);
                     map.setCenter(newPos);
@@ -269,7 +330,7 @@ function getUserLocation(isAuto = false) {
                 }
             },
             function(error) {
-                msgEl.textContent = "❌ GPS 수신 실패 (지도를 움직여 수동으로 위치를 지정하세요)";
+                msgEl.textContent = "❌ GPS 수신 실패 (상단 검색창을 이용하여 수동으로 기준치를 잡으세요)";
                 if(csvData.length > 0) {
                     convertAddressesAndRender();
                 }
@@ -292,7 +353,6 @@ function getDistanceHaversine(lat1, lng1, lat2, lng2) {
     return r * c;
 }
 
-// 최초 데이터 로드 시 주소->위경도 변환
 function convertAddressesAndRender() {
     if (!geocoder) {
         applyFilters(); 
@@ -320,7 +380,6 @@ function convertAddressesAndRender() {
     });
 }
 
-// 지도 보정 시 거리 데이터만 기민하게 재계산 알고리즘
 function recalculateDistances() {
     csvData.forEach(item => {
         if (item.lat && item.lng) {
@@ -462,7 +521,6 @@ function buildDropdown(key, data) {
     });
 }
 
-/******************* 이하 필터링 및 렌더링 함수 자동 연동 유지 *******************/
 function showDropdown(key) {
     document.querySelectorAll('.dropdown-list').forEach(el => el.style.display = 'none');
     document.getElementById(`${key}-list`).style.display = 'block';
@@ -514,7 +572,6 @@ function renderTable(data) {
         return;
     }
 
-    // 마커가 가리키는 고정 중심점을 오름차순으로 완벽 정렬
     data.sort((a, b) => a.distance - b.distance);
 
     const limitData = data.slice(0, 100); 
@@ -572,6 +629,27 @@ function resetAllFilters() {
 document.addEventListener('click', function(e) {
     if (!e.target.closest('.filter-group')) {
         document.querySelectorAll('.dropdown-list').forEach(el => el.style.display = 'none');
+    }
+});
+
+/*********************************************************************
+ * 🔒 [보안 강화] PC 마우스 우클릭, 드래그 블록, 소스보기 단축키 원천 차단
+ *********************************************************************/
+document.addEventListener('contextmenu', function(e) {
+    e.preventDefault(); 
+}, false);
+
+document.addEventListener('selectstart', function(e) {
+    e.preventDefault(); 
+}, false);
+
+document.addEventListener('keydown', function(e) {
+    if (e.keyCode === 123 || 
+        (e.ctrlKey && e.shiftKey && e.keyCode === 73) || 
+        (e.ctrlKey && e.keyCode === 85) || 
+        (e.ctrlKey && e.keyCode === 67)) {
+        e.preventDefault();
+        return false;
     }
 });
 </script>
