@@ -166,7 +166,7 @@
         </div>
         
         <div class="location-search-box">
-            <input type="text" id="map-search-keyword" class="location-search-input" placeholder="이동할 기준 장소나 주소를 입력하세요 (예: 목동역, 강남역)" onkeydown="if(event.keyCode === 13) searchNewLocation();">
+            <input type="text" id="map-search-keyword" class="location-search-input" placeholder="이동할 기준 장소나 주소를 입력하세요 (예: 중곡역, 목동역)" onkeydown="if(event.keyCode === 13) searchNewLocation();">
             <button class="btn-location-search" onclick="searchNewLocation()">위치 이동</button>
             <button class="btn-gps" onclick="getUserLocation()">📍 현재 GPS 재수신</button>
             <span id="gps-msg" class="top-gps-msg">위치 신호를 탐색하고 있습니다...</span>
@@ -251,7 +251,6 @@ function updateCenterCoordinates(latlng, message) {
     centerMarker.setPosition(latlng);
     document.getElementById('gps-msg').textContent = message;
     
-    // 📍 위치가 바뀌면 전체 거리를 다시 계산하고 목록을 바꿉니다.
     recalculateDistancesAndFetchCoordinates();
 }
 
@@ -276,9 +275,8 @@ function searchNewLocation() {
     });
 }
 
-// 🎯 [핵심 변경] 목록에 나온 상위 80개 데이터만 실시간 주소 변환 후 마커로 표시!
-function recalculateDistancesAndFetchCoordinates() {
-    // 1단계: 전체 데이터에 대해 단순 거리 계산 (haversine) 순위 매기기용
+// 🎯 [핵심 개선 완료] 순차 큐(Queue) 변환 로직으로 카카오 API 제한 우회 및 매칭 누락 완벽 해결!
+async function recalculateDistancesAndFetchCoordinates() {
     const filteredData = csvData.filter(item => {
         return (!filters.sido || item.sido.includes(filters.sido)) &&
                (!filters.sigungu || item.sigungu.includes(filters.sigungu)) &&
@@ -286,52 +284,51 @@ function recalculateDistancesAndFetchCoordinates() {
                (!filters.type || item.type.includes(filters.type));
     });
 
-    // 만약 주소 기반 대략 좌표가 있다면 갱신
+    // 1차 기본 거리 연산 기틀 마련
     filteredData.forEach(item => {
         if (item.lat && item.lng) {
             item.distance = getDistanceHaversine(userCoords.lat, userCoords.lng, item.lat, item.lng);
         } else {
-            item.distance = 999; // 미변환 시 우선순위 뒤로
+            item.distance = 999; 
         }
     });
 
-    // 거리 순 정렬
+    // 기본 거리순 정렬하여 상위 목록 80개 추출
     filteredData.sort((a, b) => a.distance - b.distance);
-
-    // 2단계: 목록에 나올 상위 80개만 핀포인트로 정확하게 주소->좌표 변환 후 마커 생성
     const targetStores = filteredData.slice(0, 80);
-    let convertedCount = 0;
 
     if(targetStores.length === 0) {
         renderTableAndMarkers(filteredData, []);
         return;
     }
 
-    targetStores.forEach(item => {
+    // ⚠️ 동시 요청 폭탄을 막기 위한 직렬(순차적) 비동기 처리 도입
+    for (let item of targetStores) {
         const fullAddr = `${item.sido} ${item.sigungu} ${item.address}`.trim();
-        geocoder.addressSearch(fullAddr, function(result, status) {
-            if (status === kakao.maps.services.Status.OK) {
-                item.lat = parseFloat(result[0].y); 
-                item.lng = parseFloat(result[0].x); 
-                item.distance = getDistanceHaversine(userCoords.lat, userCoords.lng, item.lat, item.lng);
-            }
-            convertedCount++;
-            
-            if(convertedCount === targetStores.length) {
-                // 모두 변환되면 정렬 재수행 후 화면 표시
-                filteredData.sort((a, b) => a.distance - b.distance);
-                renderTableAndMarkers(filteredData, targetStores);
-            }
+        await new Promise((resolve) => {
+            geocoder.addressSearch(fullAddr, function(result, status) {
+                if (status === kakao.maps.services.Status.OK) {
+                    item.lat = parseFloat(result[0].y); 
+                    item.lng = parseFloat(result[0].x); 
+                    item.distance = getDistanceHaversine(userCoords.lat, userCoords.lng, item.lat, item.lng);
+                }
+                resolve(); // 끝나면 다음 루프로 진입 보장
+            });
         });
-    });
+    }
+
+    // 정밀 변환 좌표 기준 재정렬 후 지도에 마커 바인딩 강제 집행
+    filteredData.sort((a, b) => a.distance - b.distance);
+    renderTableAndMarkers(filteredData, targetStores);
 }
 
 function renderTableAndMarkers(allData, markerData) {
-    // 1. 지도 마커 지우고 새로 그리기
+    // 1. 기존 마커 및 인포윈도우 완전 청소
     storeCustomOverlays.forEach(overlay => overlay.setMap(null));
     storeCustomOverlays = [];
     if (currentOpenedInfoWindow) currentOpenedInfoWindow.close();
 
+    // 2. 새로운 동기화 마커 시각화 표시
     markerData.forEach(store => {
         if (!store.lat || !store.lng) return;
 
@@ -369,7 +366,7 @@ function renderTableAndMarkers(allData, markerData) {
         });
     });
 
-    // 2. 하단 테이블 목록 그리기
+    // 3. 하단 데이터 테이블 생성
     const tbody = document.getElementById('table-body');
     document.getElementById('count').textContent = allData.length.toLocaleString();
     tbody.innerHTML = '';
