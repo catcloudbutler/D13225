@@ -6,7 +6,7 @@
     <title>지역별 판매점 데이터 통합 복합 검색 필터 시스템</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=47d0f2bd29fbb279cb461bdad2cf1097&libraries=services"></script>
+    <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=YOUR_KAKAO_MAP_API_KEY&libraries=services"></script>
     
     <style>
         body { 
@@ -60,13 +60,11 @@
         .map-title { font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #374151; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         .map-hint { font-size: 11px; color: #6b7280; font-weight: normal; }
         
-        /* 📱 모바일/PC 통합 레이아웃 박스 */
         .location-search-box { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; width: 100%; }
-        .location-search-input { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #2563eb; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; }
+        .location-search-input { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #2563eb; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; width: 100%; }
         .btn-location-search { padding: 8px 16px; background-color: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; white-space: nowrap; }
         .btn-location-search:hover { background-color: #1d4ed8; }
         
-        /* 📍 상단 GPS 재수신 버튼 */
         .btn-gps { padding: 8px 14px; background-color: #7c3aed; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; white-space: nowrap; }
         .btn-gps:hover { background-color: #6d28d9; }
         .top-gps-msg { font-size: 12px; font-weight: bold; color: #6b21a8; margin-left: 4px; display: inline-block; white-space: nowrap; }
@@ -75,8 +73,9 @@
 
         .marker-info-window { padding: 8px; font-size: 12px; font-weight: bold; text-align: center; color: #1e293b; min-width: 160px; line-height: 1.4; }
         .marker-info-dist { color: #2563eb; font-size: 11px; font-weight: normal; margin-top: 2px; }
-        .marker-info-psm { color: #ef4444; font-size: 11px; font-weight: bold; margin-top: 1px; }
-        .marker-info-psm-dup { color: #b45309; font-size: 11px; font-weight: bold; margin-top: 1px; }
+        .marker-info-gj { color: #ffffff; background-color: #153D64; font-size: 11px; font-weight: bold; padding: 2px 4px; margin-top: 2px; border-radius: 3px; }
+        .marker-info-psm { color: #ffffff; background-color: #FF0000; font-size: 11px; font-weight: bold; padding: 2px 4px; margin-top: 2px; border-radius: 3px; }
+        .marker-info-psm-dup { color: #1e293b; background-color: #eab308; font-size: 11px; font-weight: bold; padding: 2px 4px; margin-top: 2px; border-radius: 3px; }
 
         .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px; }
         .filter-group { display: flex; flex-direction: column; position: relative; }
@@ -91,7 +90,6 @@
         .btn-reset { flex: 1; padding: 9px; background-color: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; white-space: nowrap; }
         .btn-reset:hover { background-color: #dc2626; }
 
-        /* 🔐 관리자 전용 암호 입력 폼 */
         .admin-pw-box { display: flex; align-items: center; gap: 4px; margin-left: auto; }
         .admin-pw-input { padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; width: 110px; outline: none; text-align: center; transition: all 0.2s; }
         .admin-pw-input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
@@ -103,7 +101,7 @@
         th:nth-child(2), td:nth-child(2) { width: 140px; } 
         th:nth-child(3), td:nth-child(3) { width: 85px; }  
         th:nth-child(4), td:nth-child(4) { width: auto; }   
-        th:nth-child(5), td:nth-child(5) { width: 120px; } 
+        th:nth-child(5), td:nth-child(5) { width: 125px; } 
         th:nth-child(6), td:nth-child(6) { width: 95px; }  
         th:nth-child(7), td:nth-child(7) { width: 85px; }  
         th:nth-child(8), td:nth-child(8) { width: 105px; } 
@@ -126,15 +124,14 @@
         .badge-total { background-color: #dcfce7; color: #166534; }  
         .badge-score { background-color: #e0f2fe; color: #0369a1; }  
         .badge-type { background-color: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db; }
-        
-        .badge-ps-exclusive { background-color: #ef4444 !important; color: #fef08a !important; border: none !important; }
-        .badge-ps-duplicate { background-color: #eab308 !important; color: #1e293b !important; border: none !important; }
-        .badge-pro-agency { background-color: #1e3a8a !important; color: #fef08a !important; }
+
+        /* 🎨 [요청 반영] 대리점 및 중복여부 맞춤형 디자인 배지 스타일 */
+        .badge-gj-agency { background-color: #153D64 !important; color: #FFFF00 !important; border: none; }
+        .badge-psm-agency { background-color: #FF0000 !important; color: #FFFFFF !important; border: none; }
 
         .info-status { font-size: 13px; font-weight: bold; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
         .total-count { color: #2563eb; }
 
-        /* 📱 모바일 반응형 CSS */
         @media (max-width: 768px) {
             body { padding: 8px; }
             .container { padding: 12px; border-radius: 8px; }
@@ -367,33 +364,46 @@ function displayStoreMarkersOnMap(data) {
 
     if (!map || data.length === 0) return;
 
-    /* 📌 [요청 반영] 주변 거래처 표시 개수 최대 10개 -> 최대 30개로 확장 */
+    // 📌 상위 최대 30개 주변 거래처 바인딩
     const validStores = data.filter(item => item.lat > 0 && item.lng > 0).slice(0, 30);
 
-    const redMarkerImage = new kakao.maps.MarkerImage(
+    /* 🎨 [요청 반영] 마커 색상 구분 정의 */
+    // 1. 광장대리점 (#153D64) 마커 -> 스카이블루/네이비 디자인 핀 대체 사용
+    const gjMarkerImage = new kakao.maps.MarkerImage(
+        'https://t1.daumcdn.net/localimg/localimages/07/2018/pc/img/marker_blue.png',
+        new kakao.maps.Size(24, 35), { offset: new kakao.maps.Point(12, 35) }
+    );
+
+    // 2. PS&M + PS_전속 (#FF0000) 마커 -> 빨간색 별 모양 마커
+    const psmRedMarkerImage = new kakao.maps.MarkerImage(
         'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png', 
         new kakao.maps.Size(24, 35)
     );
 
-    const yellowMarkerImage = new kakao.maps.MarkerImage(
+    // 3. PS&M + 중복점 마커 -> 노란색 기본 마커
+    const psmYellowMarkerImage = new kakao.maps.MarkerImage(
         'https://t1.daumcdn.net/localimg/localimages/07/2018/pc/img/marker_yellow.png',
-        new kakao.maps.Size(24, 35),
-        { offset: new kakao.maps.Point(12, 35) }
+        new kakao.maps.Size(24, 35), { offset: new kakao.maps.Point(12, 35) }
     );
 
     validStores.forEach(store => {
         const markerPosition = new kakao.maps.LatLng(store.lat, store.lng);
         const markerOptions = { position: markerPosition };
         
-        const isAgencyPSM = store.agency.toUpperCase().includes('PS&M') || store.agency.includes('피에스앤마케팅');
+        const isGJ = store.agency.includes('광장대리점');
+        const isPSM = store.agency.toUpperCase().includes('PS&M') || store.agency.includes('피에스앤마케팅');
+        
         let markerState = "normal"; 
 
-        if (isAgencyPSM && store.type === 'PS_전속') {
-            markerOptions.image = redMarkerImage;
-            markerState = "red";
-        } else if (isAgencyPSM && store.type === '중복점') {
-            markerOptions.image = yellowMarkerImage;
-            markerState = "yellow";
+        if (isGJ) {
+            markerOptions.image = gjMarkerImage;
+            markerState = "gj";
+        } else if (isPSM && store.type === 'PS_전속') {
+            markerOptions.image = psmRedMarkerImage;
+            markerState = "psm_exclusive";
+        } else if (isPSM && store.type === '중복점') {
+            markerOptions.image = psmYellowMarkerImage;
+            markerState = "psm_duplicate";
         }
 
         const marker = new kakao.maps.Marker(markerOptions);
@@ -405,10 +415,12 @@ function displayStoreMarkersOnMap(data) {
             : `${store.distance.toFixed(2)}km`;
 
         let tagText = `<div style="color:#4b5563; font-size:11px;">일반 거래처 (${store.agency || '정보없음'})</div>`;
-        if (markerState === "red") {
-            tagText = `<div class="marker-info-psm">🔴 PS&M 전속 매장</div>`;
-        } else if (markerState === "yellow") {
-            tagText = `<div class="marker-info-psm-dup">🟡 PS&M 중복 매장</div>`;
+        if (markerState === "gj") {
+            tagText = `<div class="marker-info-gj">🔷 광장대리점 매장 (#153D64)</div>`;
+        } else if (markerState === "psm_exclusive") {
+            tagText = `<div class="marker-info-psm">🔴 PS&M 전속 매장 (#FF0000)</div>`;
+        } else if (markerState === "psm_duplicate") {
+            tagText = `<div class="marker-info-psm-dup">🟡 PS&M 중복 매장 (노란색)</div>`;
         }
 
         const iwContent = `
@@ -419,10 +431,7 @@ function displayStoreMarkersOnMap(data) {
             </div>
         `;
 
-        const infowindow = new kakao.maps.InfoWindow({
-            content: iwContent,
-            removable: true
-        });
+        const infowindow = new kakao.maps.InfoWindow({ content: iwContent, removable: true });
         infoWindows.push(infowindow);
 
         kakao.maps.event.addListener(marker, 'click', function() {
@@ -457,9 +466,7 @@ window.onload = function() {
         if(!res.ok) throw new Error("서버 파일 로드 실패 (코드: " + res.status + ")");
         return res.blob(); 
     })
-    .then(blob => {
-        parseCSVFile(blob);
-    })
+    .then(blob => { parseCSVFile(blob); })
     .catch(err => {
         document.getElementById('status-msg').innerHTML = `<span style="color:#ef4444;">⚠️ 서버 데이터 로드 실패<br>[원인]: ${err.message}</span>`;
     });
@@ -532,9 +539,7 @@ function convertAddressesAndRender() {
         });
     });
 
-    Promise.all(promises).then(() => {
-        applyFilters();
-    });
+    Promise.all(promises).then(() => { applyFilters(); });
 }
 
 function recalculateDistances() {
@@ -572,9 +577,7 @@ function parseCSVFile(fileOrBlob) {
                     header: false,
                     skipEmptyLines: true,
                     encoding: "EUC-KR",
-                    complete: function(eucResults) {
-                        processRows(eucResults.data);
-                    }
+                    complete: function(eucResults) { processRows(eucResults.data); }
                 });
             } else {
                 processRows(rows);
@@ -733,7 +736,7 @@ function renderTable(data) {
     data.sort((a, b) => a.distance - b.distance);
     displayStoreMarkersOnMap(data);
 
-    /* 📌 [요청 반영] 화면 목록 랜더링 개수 100개 -> 80개로 변경 */
+    // 📌 [기존 설정 유지] 목록 최대 80개 제한 노출
     const limitData = data.slice(0, 80); 
     limitData.forEach(item => {
         const fullAddress = `${item.sido} ${item.sigungu} ${item.address}`.trim();
@@ -741,16 +744,19 @@ function renderTable(data) {
         const formattedRatio = item.ratio.toFixed(1) + '%';
 
         const isDuplicateRow = pcodeCounts[item.pcode] > 1 ? 'class="duplicate-row"' : '';
-        const isAgencyPSM = item.agency.toUpperCase().includes('PS&M') || item.agency.includes('피에스앤마케팅');
         
-        let typeBadgeClass = 'badge badge-type';
-        if (isAgencyPSM && item.type === 'PS_전속') {
-            typeBadgeClass = 'badge badge-ps-exclusive';
-        } else if (isAgencyPSM && item.type === '중복점') {
-            typeBadgeClass = 'badge badge-ps-duplicate';
+        /* 🎨 [요청 반영] 대리점에 따른 전용 배경 및 글자색 매칭 스타일 정의 */
+        const isGJ = item.agency.includes('광장대리점');
+        const isPSM = item.agency.toUpperCase().includes('PS&M') || item.agency.includes('피에스앤마케팅');
+        
+        let agencyBadgeClass = 'badge';
+        if (isGJ) {
+            agencyBadgeClass += ' badge-gj-agency'; // 배경 #153D64, 글자 노란색
+        } else if (isPSM) {
+            agencyBadgeClass += ' badge-psm-agency'; // 배경 #FF0000, 글자 흰색
+        } else {
+            agencyBadgeClass += ' badge-type';
         }
-
-        const agencyBadgeClass = isAgencyPSM ? 'badge badge-pro-agency' : '';
 
         let distanceTxt = "";
         if(item.distance < 9000) {
@@ -773,14 +779,13 @@ function renderTable(data) {
                     ${distanceTxt}
                 </td>
                 <td title="${item.agency}"><span class="${agencyBadgeClass}">${item.agency}</span></td>
-                <td><span class="${typeBadgeClass}">${item.type}</span></td>
+                <td><span class="badge badge-type">${item.type}</span></td>
                 <td><span class="badge badge-score">${formattedRatio}</span></td>
                 <td><span class="badge badge-total">${item.score.toLocaleString()}</span></td>
             </tr>
         `;
     });
 
-    /* 📌 [요청 반영] 초과 안내 메시지 기준 80개로 수정 */
     if (data.length > 80) {
         tbody.innerHTML += `<tr><td colspan="8" style="padding:15px; background:#f3f4f6; color:#4b5563; font-weight:bold;">⚠️ 데이터가 너무 많아 상위 80개만 화면에 표시 중입니다. 필터를 이용해 범위를 좁혀주세요.</td></tr>`;
     }
