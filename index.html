@@ -72,36 +72,31 @@
         #map { width: 100%; height: 350px; border-radius: 6px; border: 1px solid #d1d5db; }
 
         /*********************************************************************
-         * 🎨 [요청 반영] 예시 이미지 디자인 맞춤형 커스텀 마커 CSS 레이아웃
+         * 🎨 [요청 반영] 크기 축소 및 문구 제거된 미니멀 커스텀 마커 디자인
          *********************************************************************/
         .custom-pin-marker {
             position: relative;
-            width: 50px;
-            height: 50px;
+            width: 24px;   /* 현재 위치 마커 크기 수준으로 축소 */
+            height: 24px;  /* 현재 위치 마커 크기 수준으로 축소 */
             border-radius: 50% 50% 50% 0;
             transform: rotate(-45deg);
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: -1px 2px 5px rgba(0,0,0,0.35);
+            box-shadow: -1px 2px 4px rgba(0,0,0,0.3);
             cursor: pointer;
             border: 2px solid #ffffff;
+            box-sizing: border-box;
         }
-        .custom-pin-marker span {
-            transform: rotate(45deg);
-            font-size: 11px;
-            font-weight: bold;
-            white-space: nowrap;
-            text-align: center;
-        }
-        /* 1순위: 광장대리점 디자인 */
-        .pin-gj { background-color: #153D64 !important; color: #FFFF00 !important; }
-        /* 2순위: PS&M 전속 디자인 */
-        .pin-psm-exclusive { background-color: #FF0000 !important; color: #FFFFFF !important; }
-        /* 3순위: PS&M 중복점 디자인 */
-        .pin-psm-duplicate { background-color: #FFFF00 !important; color: #1F2937 !important; border: 2px solid #e2e8f0; }
-        /* 4순위: 일반 디자인 */
-        .pin-normal { background-color: #2563EB !important; color: #FFFFFF !important; }
+
+        /* 1순위: 광장대리점 (배경 #153D64) */
+        .pin-gj { background-color: #153D64 !important; }
+        /* 2순위: PS&M 전속 (배경 #FF0000) */
+        .pin-psm-exclusive { background-color: #FF0000 !important; }
+        /* 3순위: PS&M 중복점 (배경 노란색) */
+        .pin-psm-duplicate { background-color: #FFFF00 !important; border: 2px solid #e2e8f0; }
+        /* 4순위: 일반 대리점 (배경 파란색 - 기존과 동일) */
+        .pin-normal { background-color: #2563EB !important; }
 
         /* 인포윈도우 스타일 정의 */
         .marker-info-window { padding: 10px; font-size: 12px; font-weight: bold; text-align: center; color: #1e293b; min-width: 170px; line-height: 1.5; }
@@ -158,7 +153,6 @@
         .badge-score { background-color: #e0f2fe; color: #0369a1; }  
         .badge-type { background-color: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db; }
 
-        /* 테이블 뱃지 전용 맞춤 스타일 */
         .badge-gj-agency { background-color: #153D64 !important; color: #FFFF00 !important; border: none; }
         .badge-psm-agency { background-color: #FF0000 !important; color: #FFFFFF !important; border: none; }
 
@@ -213,7 +207,7 @@
         <div class="map-title">
             <div>
                 <span>📍 내 기준위치 보정 및 주변 거래처 시각화</span>
-                <span class="map-hint" style="display:block; margin-top:2px;">💡 장소를 검색하면 주변 거래처(최대 30개)가 지도에 맞춤 마커로 표시됩니다.</span>
+                <span class="map-hint" style="display:block; margin-top:2px;">💡 장소를 검색하면 주변 거래처(최대 30개)가 지도에 지정된 미니 마커로 표시됩니다.</span>
             </div>
             
             <div class="admin-pw-box">
@@ -389,7 +383,7 @@ function searchNewLocation() {
 }
 
 /*********************************************************************
- * 🎨 [요청 반영] 다이내믹 커스텀 오버레이 마커 랜더링 시스템 구축
+ * 🎨 [요청 반영] 마커 크기 축소 및 내부 텍스트 제거 렌더링 파트
  *********************************************************************/
 function displayStoreMarkersOnMap(data) {
     storeCustomOverlays.forEach(overlay => overlay.setMap(null));
@@ -406,32 +400,27 @@ function displayStoreMarkersOnMap(data) {
         const isPSM = store.agency.toUpperCase().includes('PS&M') || store.agency.includes('피에스앤마케팅');
         
         let pinClass = "pin-normal";
-        let pinText = "일반";
         let markerTag = `<div style="color:#4b5563; font-size:11px;">일반 거래처 (${store.agency || '정보없음'})</div>`;
 
-        // 🥇 1순위: 대리점명에 광장대리점이 있는 곳
+        // 🥇 1순위: 광장대리점 포함
         if (isGJ) {
             pinClass = "pin-gj";
-            pinText = "광장";
             markerTag = `<div class="marker-info-gj">🔷 광장대리점 매장 (#153D64)</div>`;
         } 
-        // 🥈 2순위: PS&M 이면서 중복여부가 PS_전속인 경우
+        // 🥈 2순위: PS&M 전속
         else if (isPSM && store.type === 'PS_전속') {
             pinClass = "pin-psm-exclusive";
-            pinText = "전속";
             markerTag = `<div class="marker-info-psm">🔴 PS&M 전속 매장 (#FF0000)</div>`;
         } 
-        // 🥉 3순위: PS&M 이면서 중복여부가 중복점인 경우
+        // 🥉 3순위: PS&M 중복점
         else if (isPSM && store.type === '중복점') {
             pinClass = "pin-psm-duplicate";
-            pinText = "중복";
             markerTag = `<div class="marker-info-psm-dup">🟡 PS&M 중복 매장 (노란색)</div>`;
         }
 
-        // 디자인 마커 DOM 엘리먼트 동적 생성
+        // 디자인 마커 DOM 엘리먼트 생성 (내부 span 문구 완전 제거)
         const contentEl = document.createElement('div');
         contentEl.className = `custom-pin-marker ${pinClass}`;
-        contentEl.innerHTML = `<span>${pinText}</span>`;
 
         const customOverlay = new kakao.maps.CustomOverlay({
             position: markerPosition,
@@ -457,7 +446,6 @@ function displayStoreMarkersOnMap(data) {
 
         const infowindow = new kakao.maps.InfoWindow({ content: iwContent, removable: true });
 
-        // 오버레이 엘리먼트 클릭 및 마우스오버 이벤트 추가
         contentEl.addEventListener('click', function() {
             infowindow.open(map, customOverlay);
         });
@@ -827,7 +815,7 @@ document.addEventListener('click', function(e) {
 });
 
 /*********************************************************************
- * 🔒 [보안 강화] PC 마우스 우클릭, 드래그 블록, 소스보기 단축키 원천 차단
+ * 🔒 [보안 강화] PC 마우스 우클릭, 드래그 블록, 소스보기 단축키 차단
  *********************************************************************/
 document.addEventListener('contextmenu', function(e) { e.preventDefault(); }, false);
 document.addEventListener('selectstart', function(e) { e.preventDefault(); }, false);
