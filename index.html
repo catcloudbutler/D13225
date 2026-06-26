@@ -60,22 +60,23 @@
         .map-title { font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #374151; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         .map-hint { font-size: 11px; color: #6b7280; font-weight: normal; }
         
-        /* 상단 검색 및 GPS 버튼 통합 박스 */
-        .location-search-box { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
-        .location-search-input { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #2563eb; border-radius: 6px; font-size: 13px; outline: none; }
+        /* 📱 모바일/PC 통합 레이아웃 박스 (상단 검색 및 GPS 버튼 통합) */
+        .location-search-box { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; width: 100%; }
+        .location-search-input { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #2563eb; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; }
         .btn-location-search { padding: 8px 16px; background-color: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; white-space: nowrap; }
         .btn-location-search:hover { background-color: #1d4ed8; }
         
-        /* 📍 상단으로 이동한 GPS 재수신 버튼 스타일 */
+        /* 📍 상단 GPS 재수신 버튼 */
         .btn-gps { padding: 8px 14px; background-color: #7c3aed; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; white-space: nowrap; }
         .btn-gps:hover { background-color: #6d28d9; }
         /* GPS 상태 안내문 메시지 스타일 */
-        .top-gps-msg { font-size: 12px; font-weight: bold; color: #6b21a8; margin-left: 4px; white-space: nowrap; }
+        .top-gps-msg { font-size: 12px; font-weight: bold; color: #6b21a8; margin-left: 4px; display: inline-block; white-space: nowrap; }
 
         #map { width: 100%; height: 350px; border-radius: 6px; border: 1px solid #d1d5db; }
 
-        .marker-info-window { padding: 8px; font-size: 12px; font-weight: bold; text-align: center; color: #1e293b; min-width: 150px; }
+        .marker-info-window { padding: 8px; font-size: 12px; font-weight: bold; text-align: center; color: #1e293b; min-width: 160px; line-height: 1.4; }
         .marker-info-dist { color: #2563eb; font-size: 11px; font-weight: normal; margin-top: 2px; }
+        .marker-info-psm { color: #ef4444; font-size: 11px; font-weight: bold; margin-top: 1px; }
 
         .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px; }
         .filter-group { display: flex; flex-direction: column; position: relative; }
@@ -132,13 +133,19 @@
         .info-status { font-size: 13px; font-weight: bold; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
         .total-count { color: #2563eb; }
 
+        /* 📱 모바일(반응형) 웹 전용 정밀 UI 보정 CSS */
         @media (max-width: 768px) {
             body { padding: 8px; }
             .container { padding: 12px; border-radius: 8px; }
             h2 { font-size: 17px; margin-bottom: 15px; }
-            .location-search-box { gap: 4px; }
-            .location-search-input { width: 100%; }
-            .top-gps-msg { display: block; width: 100%; margin-left: 0; margin-top: 4px; }
+            
+            /* 모바일에서 버튼과 검색창이 자연스럽게 떨어지도록 유연성 확보 */
+            .location-search-box { gap: 6px; }
+            .location-search-input { width: 100%; flex: none; }
+            .btn-location-search { flex: 1; text-align: center; }
+            .btn-gps { flex: 1; text-align: center; }
+            .top-gps-msg { display: block; width: 100%; margin-left: 0; margin-top: 4px; text-align: left; font-size: 11px; }
+            
             .filter-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 10px; }
             .btn-group { grid-column: span 2; margin-top: 5px; }
             .map-title { flex-direction: column; align-items: flex-start; gap: 6px; }
@@ -295,9 +302,11 @@ function initMap() {
     geocoder = new kakao.maps.services.Geocoder();
     placesService = new kakao.maps.services.Places(); 
 
+    /* 🛡️ [복구] 모바일/PC에서 절대 깨지지 않는 카카오맵 공식 내위치 전용 마커 이미지 적용 */
     const centerMarkerImage = new kakao.maps.MarkerImage(
-        'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_m.png',
-        new kakao.maps.Size(24, 35)
+        'https://t1.daumcdn.net/localimg/localimages/07/2018/pc/img/marker_spot.png',
+        new kakao.maps.Size(24, 35),
+        { offset: new kakao.maps.Point(12, 35) }
     );
 
     centerMarker = new kakao.maps.Marker({
@@ -364,11 +373,26 @@ function displayStoreMarkersOnMap(data) {
 
     const validStores = data.filter(item => item.lat > 0 && item.lng > 0).slice(0, 10);
 
+    /* 🔴 PS&M 전용 대리점 마커 이미지 설정 (카카오 제공 별표 마커) */
+    const redMarkerImage = new kakao.maps.MarkerImage(
+        'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png', 
+        new kakao.maps.Size(24, 35)
+    );
+
     validStores.forEach(store => {
         const markerPosition = new kakao.maps.LatLng(store.lat, store.lng);
-        const marker = new kakao.maps.Marker({
-            position: markerPosition
-        });
+        const markerOptions = { position: markerPosition };
+        
+        /* 🔴 [조건 판단] 대리점 명칭에 PS&M이 들어가거나 중복여부가 PS_전속인 곳 매칭 */
+        const isPSM = store.agency.toUpperCase().includes('PS&M') || 
+                      store.agency.includes('피에스앤마케팅') || 
+                      store.type === 'PS_전속';
+
+        if (isPSM) {
+            markerOptions.image = redMarkerImage;
+        }
+
+        const marker = new kakao.maps.Marker(markerOptions);
         marker.setMap(map);
         storeMarkers.push(marker);
 
@@ -376,10 +400,15 @@ function displayStoreMarkersOnMap(data) {
             ? `${(store.distance * 1000).toFixed(0)}m` 
             : `${store.distance.toFixed(2)}km`;
 
+        const tagText = isPSM 
+            ? `<div class="marker-info-psm">❤️ PS&M 거래처</div>` 
+            : `<div style="color:#4b5563; font-size:11px;">일반 거래처 (${store.agency || '정보없음'})</div>`;
+
         const iwContent = `
             <div class="marker-info-window">
                 <div>🏢 ${store.name}</div>
                 <div class="marker-info-dist">📏 거리: ${distText}</div>
+                ${tagText}
             </div>
         `;
 
@@ -451,7 +480,6 @@ function getUserLocation(isAuto = false) {
                 if(csvData.length > 0) convertAddressesAndRender();
             },
             function(error) {
-                /* 📝 요청하신 문구로 정밀하게 세팅 완료 */
                 msgEl.textContent = "❌ GPS 수신실패 (검색창으로 위치를 검색하세요)";
                 msgEl.style.color = "#ef4444";
                 if(csvData.length > 0) convertAddressesAndRender();
@@ -706,7 +734,7 @@ function renderTable(data) {
 
         const isDuplicateRow = pcodeCounts[item.pcode] > 1 ? 'class="duplicate-row"' : '';
         const typeBadgeClass = item.type === 'PS_전속' ? 'badge badge-ps-exclusive' : 'badge badge-type';
-        const agencyBadgeClass = item.agency === '광장대리점' ? 'badge badge-pro-agency' : '';
+        const agencyBadgeClass = item.agency.toUpperCase().includes('PS&M') || item.agency.includes('피에스앤마케팅') ? 'badge badge-pro-agency' : '';
 
         let distanceTxt = "";
         if(item.distance < 9000) {
