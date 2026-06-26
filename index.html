@@ -58,7 +58,7 @@
         /* 지도 및 내 위치 검색 영역 스타일 */
         .map-section { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 20px; }
         .map-title { font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #374151; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-        .map-hint { font-size: 11px; color: #2563eb; font-weight: bold; }
+        .map-hint { font-size: 11px; color: #6b7280; font-weight: normal; }
         
         .location-search-box { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; width: 100%; }
         .location-search-input { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #2563eb; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; width: 100%; }
@@ -122,7 +122,7 @@
         .admin-pw-input { padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; width: 110px; outline: none; text-align: center; transition: all 0.2s; }
         .admin-pw-input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
 
-        .table-container { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 8px; max-height: 550px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .table-container { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 8px; max-height: 550px; overflow-y: auto; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
         table { width: 100%; min-width: 1000px; border-collapse: collapse; font-size: 13px; text-align: center; table-layout: fixed; }
         
         th:nth-child(1), td:nth-child(1) { width: 95px; }  
@@ -138,10 +138,17 @@
         th { background-color: #f3f4f6; color: #374151; font-weight: 700; position: sticky; top: 0; z-index: 10; }
         td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         td.text-left { text-align: left; white-space: normal; word-break: break-all; } 
+        tr { transition: background-color 0.3s ease; }
         tr:hover { background-color: #f1f5f9; }
         
-        tr.duplicate-row { background-color: #FFFFCC !important; }
+        tr.duplicate-row { background-color: #FFFFCC; }
         tr.duplicate-row:hover { background-color: #fef08a !important; }
+
+        /* 🎯 [요청 반영] 마커 선택 시 리스트 행 하이라이트 스타일 */
+        tr.selected-store-row {
+            background-color: #e0f2fe !important; /* 연한 파란색 포인트 배경 */
+            border: 2px solid #3b82f6;
+        }
 
         .map-link { color: #2563eb; text-decoration: none; font-weight: 500; display: inline-block; vertical-align: middle; }
         .map-link:hover { text-decoration: underline; color: #1d4ed8; }
@@ -207,7 +214,7 @@
         <div class="map-title">
             <div>
                 <span>📍 내 기준위치 보정 및 주변 거래처 시각화</span>
-                <span class="map-hint" style="display:block; margin-top:2px;">⚡ 기준점 중심 반경 3.5km 이내 가까운 순 최대 30개 자동 추출 완료</span>
+                <span class="map-hint" style="display:block; margin-top:2px;">💡 마커를 클릭하면 상세 주소와 거래처명이 출력되며 하단 목록에서 해당 매장 위치로 연동됩니다.</span>
             </div>
             
             <div class="admin-pw-box">
@@ -253,9 +260,9 @@
 
     <div>
         <div class="info-status">
-            <div class="total-count">📊 조건 검색 및 반경(3.5km) 제한 조회 결과: <span id="count">0</span>건</div>
+            <div class="total-count">📊 조회된 판매점 목록: <span id="count">0</span>건</div>
         </div>
-        <div class="table-container">
+        <div class="table-container" id="main-table-container">
             <table>
                 <thead>
                     <tr>
@@ -290,6 +297,7 @@ let map = null;
 let centerMarker = null;
 
 let storeCustomOverlays = []; 
+let currentOpenedInfoWindow = null; // 현재 열려있는 인포윈도우 전역 추적용
 
 function checkAdminAccess() {
     const pwInput = document.getElementById('admin-password');
@@ -383,13 +391,15 @@ function searchNewLocation() {
 }
 
 /*********************************************************************
- * 🎨 마커 지도 시각화 (반경 및 개수 제한 연동형)
+ * 🎯 [요청 반영] 마커 클릭 연동 및 거래처 매칭 하이라이트 로직
  *********************************************************************/
-function displayStoreMarkersOnMap(validStores) {
+function displayStoreMarkersOnMap(data) {
     storeCustomOverlays.forEach(overlay => overlay.setMap(null));
     storeCustomOverlays = [];
 
-    if (!map || validStores.length === 0) return;
+    if (!map || data.length === 0) return;
+
+    const validStores = data.filter(item => item.lat > 0 && item.lng > 0).slice(0, 80);
 
     validStores.forEach(store => {
         const markerPosition = new kakao.maps.LatLng(store.lat, store.lng);
@@ -440,11 +450,40 @@ function displayStoreMarkersOnMap(validStores) {
 
         const infowindow = new kakao.maps.InfoWindow({ content: iwContent, removable: true });
 
+        // 마커 클릭 시 동작 정의
         contentEl.addEventListener('click', function() {
+            // 1. 기존 열린 정보창 닫기
+            if (currentOpenedInfoWindow) {
+                currentOpenedInfoWindow.close();
+            }
+            // 2. 정보창 오픈 및 전속 할당
             infowindow.open(map, customOverlay);
+            currentOpenedInfoWindow = infowindow;
+
+            // 3. 하단 목록 연동 타겟 행 엘리먼트 검색 (P코드 기준)
+            const targetRow = document.getElementById(`row-${store.pcode}`);
+            if (targetRow) {
+                // 기존 하이라이트 일괄 초기화
+                document.querySelectorAll('tr.selected-store-row').forEach(row => {
+                    row.classList.remove('selected-store-row');
+                });
+                
+                // 선택 행 스타일 부여 및 스크롤 포커스 이동
+                targetRow.classList.add('selected-store-row');
+                targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         });
+
         contentEl.addEventListener('mouseover', function() {
-            infowindow.open(map, customOverlay);
+            if (currentOpenedInfoWindow !== infowindow) {
+                infowindow.open(map, customOverlay);
+            }
+        });
+
+        contentEl.addEventListener('mouseout', function() {
+            if (currentOpenedInfoWindow !== infowindow) {
+                infowindow.close();
+            }
         });
     });
 }
@@ -726,41 +765,32 @@ function applyFilters(changedKey) {
     renderTable(filteredData);
 }
 
-/*********************************************************************
- * 🛠️ [요청 반영] 반경 3.5km 이내 + 정렬 후 상위 최대 30개 커트라인 시스템
- *********************************************************************/
 function renderTable(data) {
     const tbody = document.getElementById('table-body');
+    document.getElementById('count').textContent = data.length.toLocaleString();
     tbody.innerHTML = '';
 
-    // 1단계: 먼저 내 중심점 기준 거리 순서대로 오름차순 정렬
-    data.sort((a, b) => a.distance - b.distance);
-
-    // 2단계: 거리 조건 필터링 (반경 3.5km 이내인 데이터만 매칭)
-    const withinRadiusData = data.filter(item => item.distance <= 3.5);
-
-    // 3단계: 추출 개수 제한 (가장 가까운 최대 30개만 선택)
-    const finalLimitData = withinRadiusData.slice(0, 30);
-
-    // 화면 카운터 표시 업데이트
-    document.getElementById('count').textContent = finalLimitData.length.toLocaleString();
-
-    if (finalLimitData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="color:#ef4444; padding:30px; font-weight:bold;">📍 반경 3.5km 이내에 조건에 일치하는 판매점이 존재하지 않습니다.</td></tr>`;
+    if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="color:#ef4444; padding:30px; font-weight:bold;">일치하는 조건의 데이터가 존재하지 않습니다.</td></tr>`;
         displayStoreMarkersOnMap([]); 
         return;
     }
 
-    // 선별된 최종 30개 거래처만 마커로 시각화 요청
-    displayStoreMarkersOnMap(finalLimitData);
+    data.sort((a, b) => a.distance - b.distance);
+    displayStoreMarkersOnMap(data);
 
-    // 선별된 데이터 동적 루프 생성 및 테이블 바인딩
-    finalLimitData.forEach(item => {
+    const limitData = data.slice(0, 80); 
+    limitData.forEach(item => {
         const fullAddress = `${item.sido} ${item.sigungu} ${item.address}`.trim();
         const kakaoMapUrl = `https://map.kakao.com/link/search/${encodeURIComponent(fullAddress)}`;
         const formattedRatio = item.ratio.toFixed(1) + '%';
 
-        const isDuplicateRow = pcodeCounts[item.pcode] > 1 ? 'class="duplicate-row"' : '';
+        // 기본 중복 행 여부 검증 클래스 부여
+        let rowClasses = [];
+        if(pcodeCounts[item.pcode] > 1) {
+            rowClasses.push('duplicate-row');
+        }
+        const classAttr = rowClasses.length > 0 ? `class="${rowClasses.join(' ')}"` : '';
         
         const isGJ = item.agency.includes('광장대리점');
         const isPSM = item.agency.toUpperCase().includes('PS&M') || item.agency.includes('피에스앤마케팅');
@@ -783,8 +813,9 @@ function renderTable(data) {
             }
         }
 
+        // 각 행마다 id 할당 (`row-P코드`)
         tbody.innerHTML += `
-            <tr ${isDuplicateRow}>
+            <tr id="row-${item.pcode}" ${classAttr}>
                 <td><b>${item.pcode}</b></td>
                 <td title="${item.name}"><b>${item.name}</b></td>
                 <td>${item.dong}</td>
@@ -801,6 +832,10 @@ function renderTable(data) {
             </tr>
         `;
     });
+
+    if (data.length > 80) {
+        tbody.innerHTML += `<tr><td colspan="8" style="padding:15px; background:#f3f4f6; color:#4b5563; font-weight:bold;">⚠️ 데이터가 너무 많아 상위 80개만 화면에 표시 중입니다. 필터를 이용해 범위를 좁혀주세요.</td></tr>`;
+    }
 }
 
 function resetAllFilters() {
