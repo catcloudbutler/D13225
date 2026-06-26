@@ -58,7 +58,6 @@
         /* 지도 및 내 위치 검색 영역 스타일 */
         .map-section { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 15px; }
         .map-title { font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #374151; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-        .map-hint { font-size: 11px; color: #4b5563; font-weight: normal; }
         
         .location-search-box { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; width: 100%; }
         .location-search-input { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #2563eb; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; width: 100%; }
@@ -69,35 +68,38 @@
         .btn-gps:hover { background-color: #6d28d9; }
         .top-gps-msg { font-size: 12px; font-weight: bold; color: #6b21a8; margin-left: 4px; display: inline-block; white-space: nowrap; }
 
-        #map { width: 100%; height: 350px; border-radius: 6px; border: 1px solid #d1d5db; }
-
-        /* 🎯 [신설] 지도 마커 클릭 시 상단에 고정 출력되는 안내 배너 스타일 */
-        .selected-banner {
-            background-color: #eff6ff;
-            border: 2px solid #3b82f6;
-            border-radius: 8px;
-            padding: 12px 16px;
-            margin-bottom: 20px;
-            font-size: 14px;
-            font-weight: bold;
-            color: #1e40af;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            box-shadow: 0 2px 8px rgba(37,99,235,0.08);
-        }
-        .selected-banner .title-tag {
-            background-color: #3b82f6;
-            color: white;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            text-transform: uppercase;
-        }
+        #map { width: 100%; height: 420px; border-radius: 6px; border: 1px solid #d1d5db; }
 
         /*********************************************************************
-         * 🎨 미니멀 커스텀 마커 디자인
+         * 🎯 [요청 반영] 마커 클릭 시 나타나는 보기 좋은 표 형태의 말풍선 스타일
          *********************************************************************/
+        .popup-info-table {
+            border-collapse: collapse;
+            font-size: 12px;
+            font-family: 'Malgun Gothic', sans-serif;
+            background: #ffffff;
+            margin: 5px;
+            min-width: 200px;
+            border: 1px solid #d1d5db;
+        }
+        .popup-info-table th {
+            background-color: #f8fafc;
+            color: #334155;
+            font-weight: bold;
+            padding: 6px 10px;
+            border: 1px solid #e2e8f0;
+            text-align: left;
+            width: 80px;
+        }
+        .popup-info-table td {
+            padding: 6px 10px;
+            border: 1px solid #e2e8f0;
+            color: #0f172a;
+            text-align: left;
+            font-weight: 500;
+        }
+
+        /* 🎨 미니멀 커스텀 지도 마커 디자인 */
         .custom-pin-marker {
             position: relative;
             width: 24px;   
@@ -117,14 +119,7 @@
         .pin-psm-duplicate { background-color: #FFFF00 !important; border: 2px solid #e2e8f0; }
         .pin-normal { background-color: #2563EB !important; }
 
-        /* 인포윈도우 스타일 정의 */
-        .marker-info-window { padding: 10px; font-size: 12px; font-weight: bold; text-align: center; color: #1e293b; min-width: 170px; line-height: 1.5; }
-        .marker-info-dist { color: #2563eb; font-size: 11px; font-weight: normal; margin-top: 3px; }
-        .marker-info-gj { color: #FFFF00; background-color: #153D64; font-size: 11px; font-weight: bold; padding: 3px 5px; margin-top: 4px; border-radius: 4px; }
-        .marker-info-psm { color: #ffffff; background-color: #FF0000; font-size: 11px; font-weight: bold; padding: 3px 5px; margin-top: 4px; border-radius: 4px; }
-        .marker-info-psm-dup { color: #1e293b; background-color: #FFFF00; font-size: 11px; font-weight: bold; padding: 3px 5px; margin-top: 4px; border-radius: 4px; border: 1px solid #cbd5e1; }
-
-        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px; }
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px; margin-top: 15px; }
         .filter-group { display: flex; flex-direction: column; position: relative; }
         .filter-group label { font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #4b5563; }
         .search-input { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; width: 100%; background-color: #fff; }
@@ -163,12 +158,6 @@
         tr.duplicate-row { background-color: #FFFFCC; }
         tr.duplicate-row:hover { background-color: #fef08a !important; }
 
-        /* 🎯 마커 클릭 시 리스트 연동 하이라이트 색상 */
-        tr.selected-store-row {
-            background-color: #bae6fd !important; /* 선명한 하늘색 배경 피드백 */
-            outline: 2px solid #2563eb;
-        }
-
         .map-link { color: #2563eb; text-decoration: none; font-weight: 500; display: inline-block; vertical-align: middle; }
         .map-link:hover { text-decoration: underline; color: #1d4ed8; }
         
@@ -204,8 +193,7 @@
             th, td { padding: 8px 5px; }
             .badge { font-size: 10px; padding: 2px 4px; }
             .distance-tag { font-size: 10px; padding: 1px 5px; }
-            #map { height: 260px; }
-            .selected-banner { font-size: 13px; padding: 10px; }
+            #map { height: 320px; }
         }
     </style>
 </head>
@@ -248,11 +236,6 @@
         </div>
         
         <div id="map"></div>
-    </div>
-
-    <div id="selected-store-banner" class="selected-banner">
-        <span class="title-tag">선택됨</span>
-        <span id="selected-store-text">지도의 마커를 클릭하면 여기에 거래처명과 상세 내역이 연동되어 표기됩니다.</span>
     </div>
 
     <div class="filter-grid">
@@ -414,7 +397,7 @@ function searchNewLocation() {
 }
 
 /*********************************************************************
- * 🎯 [수정 반영] 마커 클릭 시 상단 안내 배너 표기 및 목록 매칭 액션
+ * 🎯 [수정 반영] 이미지 매칭 표 형식 인포윈도우 바인딩 스크립트
  *********************************************************************/
 function displayStoreMarkersOnMap(data) {
     storeCustomOverlays.forEach(overlay => overlay.setMap(null));
@@ -431,11 +414,9 @@ function displayStoreMarkersOnMap(data) {
         const isPSM = store.agency.toUpperCase().includes('PS&M') || store.agency.includes('피에스앤마케팅');
         
         let pinClass = "pin-normal";
-        let markerTag = `<div style="color:#4b5563; font-size:11px;">일반 거래처 (${store.agency || '정보없음'})</div>`;
-
-        if (isGJ) { pinClass = "pin-gj"; markerTag = `<div class="marker-info-gj">🔷 광장대리점 매장</div>`; } 
-        else if (isPSM && store.type === 'PS_전속') { pinClass = "pin-psm-exclusive"; markerTag = `<div class="marker-info-psm">🔴 PS&M 전속 매장</div>`; } 
-        else if (isPSM && store.type === '중복점') { pinClass = "pin-psm-duplicate"; markerTag = `<div class="marker-info-psm-dup">🟡 PS&M 중복 매장</div>`; }
+        if (isGJ) { pinClass = "pin-gj"; } 
+        else if (isPSM && store.type === 'PS_전속') { pinClass = "pin-psm-exclusive"; } 
+        else if (isPSM && store.type === '중복점') { pinClass = "pin-psm-duplicate"; }
 
         const contentEl = document.createElement('div');
         contentEl.className = `custom-pin-marker ${pinClass}`;
@@ -450,43 +431,41 @@ function displayStoreMarkersOnMap(data) {
         customOverlay.setMap(map);
         storeCustomOverlays.push(customOverlay);
 
-        const distText = store.distance < 1 
-            ? `${(store.distance * 1000).toFixed(0)}m` 
-            : `${store.distance.toFixed(2)}km`;
-
+        // 🎯 요청하신 이미지와 동일한 구조의 표(Table) 형태 HTML 구성
         const iwContent = `
-            <div class="marker-info-window">
-                <div>🏢 ${store.name}</div>
-                <div class="marker-info-dist">📏 거리: ${distText}</div>
-                ${markerTag}
-            </div>
+            <table class="popup-info-table">
+                <tr>
+                    <th>판매점 명</th>
+                    <td>${store.name}</td>
+                </tr>
+                <tr>
+                    <th>대리점 명</th>
+                    <td>${store.agency || '정보없음'}</td>
+                </tr>
+                <tr>
+                    <th>중복여부</th>
+                    <td>${store.type}</td>
+                </tr>
+                <tr>
+                    <th>대리점실적</th>
+                    <td>${store.score.toLocaleString()}건</td>
+                </tr>
+            </table>
         `;
 
-        const infowindow = new kakao.maps.InfoWindow({ content: iwContent, removable: true });
+        const infowindow = new kakao.maps.InfoWindow({ 
+            content: iwContent, 
+            removable: true 
+        });
 
-        // 마커(엘리먼트) 클릭 인터랙션 설계
-        contentEl.addEventListener('click', function(e) {
-            // 1. 카카오 인포윈도우 제어
+        // 클릭했을 때 고정으로 표기되도록 설정
+        contentEl.addEventListener('click', function() {
             if (currentOpenedInfoWindow) currentOpenedInfoWindow.close();
             infowindow.open(map, customOverlay);
             currentOpenedInfoWindow = infowindow;
-
-            // 2. [주요 보완] 상단 텍스트 안내 영역에 실시간 거래처 정보 인쇄
-            const bannerTextEl = document.getElementById('selected-store-text');
-            const fullAddr = `${store.sido} ${store.sigungu} ${store.address}`.trim();
-            bannerTextEl.innerHTML = `🏢 <span style="font-size:16px; color:#111827;">${store.name}</span> (${store.agency || '대리점 미정'}) | 📍 주소: ${fullAddr} [거리: ${distText}]`;
-
-            // 3. 하단 판매점 리스트 테이블 연동 및 스크롤 다운 포커싱
-            const targetRow = document.getElementById(`row-${store.pcode}`);
-            if (targetRow) {
-                document.querySelectorAll('tr.selected-store-row').forEach(row => {
-                    row.classList.remove('selected-store-row');
-                });
-                targetRow.classList.add('selected-store-row');
-                targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
         });
 
+        // 마우스 오버/아웃 인터랙션 추가 처리
         contentEl.addEventListener('mouseover', function() {
             if (currentOpenedInfoWindow !== infowindow) infowindow.open(map, customOverlay);
         });
@@ -846,7 +825,6 @@ function resetAllFilters() {
     document.getElementById('search-sigungu').value = "";
     document.getElementById('search-dong').value = "";
     document.getElementById('search-type').value = "";
-    document.getElementById('selected-store-text').textContent = "지도의 마커를 클릭하면 여기에 거래처명과 상세 내역이 연동되어 표기됩니다.";
     if(csvData.length > 0) applyFilters();
 }
 
