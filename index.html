@@ -6,7 +6,7 @@
     <title>지역별 판매점 데이터 통합 복합 검색 필터 시스템</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=47d0f2bd29fbb279cb461bdad2cf1097&libraries=services"></script>
+    <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=YOUR_KAKAO_MAP_API_KEY&libraries=services"></script>
     
     <style>
         body { 
@@ -17,15 +17,38 @@
             margin: 0; 
             
             /* 🔒 [보안] 모바일 및 PC 전체 복사/드래그 금지 CSS */
-            -webkit-user-select: none;  /* 사파리/크롬 모바일 */
-            -moz-user-select: none;     /* 파이어폭스 */
-            -ms-user-select: none;      /* 익스플로러 */
-            user-select: none;          /* 표준 속성 */
+            -webkit-user-select: none;  
+            -moz-user-select: none;     
+            -ms-user-select: none;      
+            user-select: none;          
         }
         .container { max-width: 1400px; margin: 0 auto; background: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         h2 { text-align: center; color: #111827; margin-bottom: 20px; font-size: 20px; }
 
-        .upload-section { background: #f0fdf4; border: 2px dashed #bbf7d0; border-radius: 8px; padding: 12px 15px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+        /* 🔒 서버 셧다운(닫힘) 레이아웃 스타일 */
+        #server-lock-screen {
+            display: none;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #ffffff; z-index: 99999;
+            flex-direction: column; align-items: center; justify-content: center;
+            color: #1f2937; font-family: 'Malgun Gothic', sans-serif; text-align: center;
+        }
+        #server-lock-screen h1 { font-size: 28px; color: #ef4444; margin-bottom: 10px; }
+        #server-lock-screen p { font-size: 16px; color: #4b5563; }
+
+        /* 🔒 관리자 전용 업로드 섹션 */
+        .upload-section { 
+            background: #f0fdf4; 
+            border: 2px dashed #bbf7d0; 
+            border-radius: 8px; 
+            padding: 12px 15px; 
+            margin-bottom: 20px; 
+            display: none; 
+            align-items: center; 
+            justify-content: space-between; 
+            flex-wrap: wrap; 
+            gap: 10px; 
+        }
         .upload-info { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #166534; }
         .upload-info b { color: #15803d; }
         .file-label { background-color: #16a34a; color: white; padding: 8px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; display: inline-block; transition: background 0.2s; white-space: nowrap; }
@@ -34,18 +57,27 @@
 
         /* 지도 및 내 위치 검색 영역 스타일 */
         .map-section { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 20px; }
-        .map-title { font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #374151; display: flex; justify-content: space-between; align-items: center; }
+        .map-title { font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #374151; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         .map-hint { font-size: 11px; color: #6b7280; font-weight: normal; }
         
-        /* 📍 내 위치 장소 검색창 스타일 */
-        .location-search-box { display: flex; gap: 6px; margin-bottom: 10px; }
-        .location-search-input { flex: 1; padding: 8px 12px; border: 1px solid #2563eb; border-radius: 6px; font-size: 13px; outline: none; }
+        /* 상단 검색 및 GPS 버튼 통합 박스 */
+        .location-search-box { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+        .location-search-input { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #2563eb; border-radius: 6px; font-size: 13px; outline: none; }
         .btn-location-search { padding: 8px 16px; background-color: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; white-space: nowrap; }
         .btn-location-search:hover { background-color: #1d4ed8; }
+        
+        /* 📍 상단으로 이동한 GPS 재수신 버튼 스타일 */
+        .btn-gps { padding: 8px 14px; background-color: #7c3aed; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; white-space: nowrap; }
+        .btn-gps:hover { background-color: #6d28d9; }
+        /* GPS 상태 안내문 메시지 스타일 */
+        .top-gps-msg { font-size: 12px; font-weight: bold; color: #6b21a8; margin-left: 4px; white-space: nowrap; }
 
-        #map { width: 100%; height: 300px; border-radius: 6px; border: 1px solid #d1d5db; }
+        #map { width: 100%; height: 350px; border-radius: 6px; border: 1px solid #d1d5db; }
 
-        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px; }
+        .marker-info-window { padding: 8px; font-size: 12px; font-weight: bold; text-align: center; color: #1e293b; min-width: 150px; }
+        .marker-info-dist { color: #2563eb; font-size: 11px; font-weight: normal; margin-top: 2px; }
+
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px; }
         .filter-group { display: flex; flex-direction: column; position: relative; }
         .filter-group label { font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #4b5563; }
         .search-input { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; width: 100%; background-color: #fff; }
@@ -57,8 +89,11 @@
         .btn-group { display: flex; gap: 8px; margin-top: auto; }
         .btn-reset { flex: 1; padding: 9px; background-color: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; white-space: nowrap; }
         .btn-reset:hover { background-color: #dc2626; }
-        .btn-gps { padding: 9px 12px; background-color: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; white-space: nowrap; }
-        .btn-gps:hover { background-color: #1d4ed8; }
+
+        /* 🔐 관리자 전용 암호 입력 폼 스타일 */
+        .admin-pw-box { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+        .admin-pw-input { padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; width: 110px; outline: none; text-align: center; transition: all 0.2s; }
+        .admin-pw-input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
 
         .table-container { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 8px; max-height: 550px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         table { width: 100%; min-width: 1000px; border-collapse: collapse; font-size: 13px; text-align: center; table-layout: fixed; }
@@ -96,28 +131,38 @@
 
         .info-status { font-size: 13px; font-weight: bold; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
         .total-count { color: #2563eb; }
-        .gps-status { color: #6b21a8; font-size: 12px; text-align: right; }
 
         @media (max-width: 768px) {
             body { padding: 8px; }
             .container { padding: 12px; border-radius: 8px; }
             h2 { font-size: 17px; margin-bottom: 15px; }
+            .location-search-box { gap: 4px; }
+            .location-search-input { width: 100%; }
+            .top-gps-msg { display: block; width: 100%; margin-left: 0; margin-top: 4px; }
             .filter-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 10px; }
             .btn-group { grid-column: span 2; margin-top: 5px; }
+            .map-title { flex-direction: column; align-items: flex-start; gap: 6px; }
+            .admin-pw-box { margin-left: 0; width: 100%; display: flex; justify-content: flex-start; }
             table { font-size: 12px; min-width: 1050px; } 
             th, td { padding: 8px 5px; }
             .badge { font-size: 10px; padding: 2px 4px; }
             .distance-tag { font-size: 10px; padding: 1px 5px; }
-            #map { height: 220px; }
+            #map { height: 260px; }
         }
     </style>
 </head>
 <body>
 
+<div id="server-lock-screen">
+    <h1>⚠️ 시스템 일시 점검 안내</h1>
+    <p>현재 데이터베이스 및 관리 시스템 점검으로 인해 서비스를 이용하실 수 없습니다.</p>
+    <p style="font-size: 13px; color: #9ca3af; margin-top: 5px;">이용에 불편을 드려 대단히 죄송합니다. (관리자 전용 제어 상태)</p>
+</div>
+
 <div class="container">
     <h2>🏢 판매점 데이터 통합 조회 시스템</h2>
 
-    <div class="upload-section">
+    <div id="admin-upload-panel" class="upload-section">
         <div class="upload-info">
             <span>📊 <b>분석 대상 파일:</b> <span id="target-file-name" style="font-weight: bold; color: #2563eb;">전거래처_PS중복.csv (서버 자동 연동)</span></span>
         </div>
@@ -129,13 +174,21 @@
 
     <div class="map-section">
         <div class="map-title">
-            <span>📍 내 기준위치 보정 및 검색</span>
-            <span class="map-hint">💡 장소를 검색하거나 지도를 움직이면 그 자리가 '내 위치'가 됩니다.</span>
+            <div>
+                <span>📍 내 기준위치 보정 및 주변 거래처 시각화</span>
+                <span class="map-hint" style="display:block; margin-top:2px;">💡 장소를 검색하면 주변 거래처(최대 10개)가 지도에 핀으로 표시됩니다.</span>
+            </div>
+            
+            <div class="admin-pw-box">
+                <input type="password" id="admin-password" class="admin-pw-input" placeholder="🔒 관리자 인증" onkeydown="if(event.keyCode === 13) checkAdminAccess();">
+            </div>
         </div>
         
         <div class="location-search-box">
             <input type="text" id="map-search-keyword" class="location-search-input" placeholder="이동할 기준 장소나 주소를 입력하세요 (예: 강남역, 대전시청)" onkeydown="if(event.keyCode === 13) searchNewLocation();">
             <button class="btn-location-search" onclick="searchNewLocation()">위치 이동</button>
+            <button class="btn-gps" onclick="getUserLocation()">📍 현재 GPS 재수신</button>
+            <span id="gps-msg" class="top-gps-msg">위치 신호를 탐색하고 있습니다...</span>
         </div>
         
         <div id="map"></div>
@@ -163,7 +216,6 @@
             <ul id="type-list" class="dropdown-list"></ul>
         </div>
         <div class="btn-group">
-            <button class="btn-gps" onclick="getUserLocation()">📍 현재 GPS 재수신</button>
             <button class="btn-reset" onclick="resetAllFilters()">필터 초기화</button>
         </div>
     </div>
@@ -171,7 +223,6 @@
     <div>
         <div class="info-status">
             <div class="total-count">📊 조회된 판매점 목록: <span id="count">0</span>건</div>
-            <div id="gps-msg" class="gps-status">위치 정보를 불러오는 중이 아닙니다.</div>
         </div>
         <div class="table-container">
             <table>
@@ -196,14 +247,40 @@
 </div>
 
 <script>
+/*********************************************************************
+ * 🛠️ [서버 제어 스위치] true:오픈, false:클로즈
+ *********************************************************************/
+let isServerOpen = true; 
+
 let csvData = [];
 let filters = { sido: "", sigungu: "", dong: "", type: "" };
 let pcodeCounts = {}; 
 let userCoords = { lat: 37.5665, lng: 126.9780 }; 
 let geocoder = null;
-let placesService = null; // 장소 검색용 서비스 객체
+let placesService = null; 
 let map = null;
 let centerMarker = null;
+
+let storeMarkers = [];
+let infoWindows = [];
+
+function checkAdminAccess() {
+    const pwInput = document.getElementById('admin-password');
+    const uploadPanel = document.getElementById('admin-upload-panel');
+    
+    if (pwInput.value === 'd13225##') {
+        uploadPanel.style.display = 'flex'; 
+        pwInput.style.borderColor = '#16a34a';
+        pwInput.style.backgroundColor = '#f0fdf4';
+        pwInput.style.color = '#166534';
+        pwInput.disabled = true; 
+        pwInput.placeholder = "🔓 관리자";
+    } else {
+        alert('올바르지 않은 비밀번호입니다.');
+        pwInput.value = '';
+        pwInput.focus();
+    }
+}
 
 function initMap() {
     const mapContainer = document.getElementById('map');
@@ -216,32 +293,36 @@ function initMap() {
 
     map = new kakao.maps.Map(mapContainer, mapOption);
     geocoder = new kakao.maps.services.Geocoder();
-    placesService = new kakao.maps.services.Places(); // 키워드 검색 객체 초기화
+    placesService = new kakao.maps.services.Places(); 
+
+    const centerMarkerImage = new kakao.maps.MarkerImage(
+        'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_m.png',
+        new kakao.maps.Size(24, 35)
+    );
 
     centerMarker = new kakao.maps.Marker({
-        position: map.getCenter()
+        position: map.getCenter(),
+        image: centerMarkerImage
     });
     centerMarker.setMap(map);
 
-    // 지도를 드래그해서 움직였을 때 이벤트
     kakao.maps.event.addListener(map, 'dragend', function() {
-        updateCenterCoordinates(map.getCenter(), `🎯 지도 중심점 기준으로 거리 계산 보정됨`);
+        updateCenterCoordinates(map.getCenter(), `🎯 지도 중심점 기준으로 거리 보정됨`);
     });
 }
 
-// 🎯 기준위치 좌표 변경 및 거리 재계산 통합 처리 함수
 function updateCenterCoordinates(latlng, message) {
     userCoords.lat = latlng.getLat();
     userCoords.lng = latlng.getLng();
     
     centerMarker.setPosition(latlng);
     document.getElementById('gps-msg').textContent = message;
+    document.getElementById('gps-msg').style.color = "#2563eb";
 
     recalculateDistances();
     applyFilters();
 }
 
-// 🔍 [장소/주소 통합 검색] 기능
 function searchNewLocation() {
     const keyword = document.getElementById('map-search-keyword').value.trim();
     if (!keyword) {
@@ -251,23 +332,20 @@ function searchNewLocation() {
 
     if (!placesService || !geocoder) return;
 
-    // 1단계: 키워드(장소명) 검색 먼저 수행
     placesService.keywordSearch(keyword, function(data, status) {
         if (status === kakao.maps.services.Status.OK) {
-            // 가장 연관도 높은 첫 번째 검색 결과로 이동
             const firstResult = data[0];
             const moveLatLng = new kakao.maps.LatLng(firstResult.y, firstResult.x);
             
             map.setCenter(moveLatLng);
-            updateCenterCoordinates(moveLatLng, `🔎 검색 위치로 이동됨: ${firstResult.place_name}`);
+            updateCenterCoordinates(moveLatLng, `🔎 검색 위치 이동: ${firstResult.place_name}`);
         } else {
-            // 장소명 검색 실패 시 2단계: 주소 검색으로 재시도
             geocoder.addressSearch(keyword, function(result, addressStatus) {
                 if (addressStatus === kakao.maps.services.Status.OK) {
                     const moveLatLng = new kakao.maps.LatLng(result[0].y, result[0].x);
                     
                     map.setCenter(moveLatLng);
-                    updateCenterCoordinates(moveLatLng, `🔎 검색 주소로 이동됨: ${keyword}`);
+                    updateCenterCoordinates(moveLatLng, `🔎 검색 주소 이동: ${keyword}`);
                 } else {
                     alert('입력하신 장소나 주소를 찾을 수 없습니다. 정확히 입력해 주세요.');
                 }
@@ -276,7 +354,58 @@ function searchNewLocation() {
     });
 }
 
+function displayStoreMarkersOnMap(data) {
+    storeMarkers.forEach(marker => marker.setMap(null));
+    infoWindows.forEach(iw => iw.close());
+    storeMarkers = [];
+    infoWindows = [];
+
+    if (!map || data.length === 0) return;
+
+    const validStores = data.filter(item => item.lat > 0 && item.lng > 0).slice(0, 10);
+
+    validStores.forEach(store => {
+        const markerPosition = new kakao.maps.LatLng(store.lat, store.lng);
+        const marker = new kakao.maps.Marker({
+            position: markerPosition
+        });
+        marker.setMap(map);
+        storeMarkers.push(marker);
+
+        const distText = store.distance < 1 
+            ? `${(store.distance * 1000).toFixed(0)}m` 
+            : `${store.distance.toFixed(2)}km`;
+
+        const iwContent = `
+            <div class="marker-info-window">
+                <div>🏢 ${store.name}</div>
+                <div class="marker-info-dist">📏 거리: ${distText}</div>
+            </div>
+        `;
+
+        const infowindow = new kakao.maps.InfoWindow({
+            content: iwContent,
+            removable: true
+        });
+        infoWindows.push(infowindow);
+
+        kakao.maps.event.addListener(marker, 'click', function() {
+            infoWindows.forEach(iw => iw.close()); 
+            infowindow.open(map, marker);
+        });
+        
+        kakao.maps.event.addListener(marker, 'mouseover', function() {
+            infowindow.open(map, marker);
+        });
+    });
+}
+
 window.onload = function() {
+    if (!isServerOpen) {
+        document.getElementById('server-lock-screen').style.display = 'flex';
+        return;
+    }
+
     if (typeof kakao !== 'undefined') {
         initMap();
     }
@@ -303,42 +432,35 @@ window.onload = function() {
 function getUserLocation(isAuto = false) {
     const msgEl = document.getElementById('gps-msg');
     if (navigator.geolocation) {
-        msgEl.textContent = "🛰️ 모바일 고정밀 GPS 신호 수신 중...";
+        msgEl.textContent = "🛰️ GPS 신호 수신 중...";
+        msgEl.style.color = "#7c3aed";
         
-        const gpsOptions = {
-            enableHighAccuracy: true, 
-            timeout: 10000,           
-            maximumAge: 0             
-        };
+        const gpsOptions = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
 
         navigator.geolocation.getCurrentPosition(
             function(position) {
-                userCoords = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                };
-                msgEl.textContent = `✅ GPS 수신 완료 (오차 발생 시 지도를 움직이거나 검색하세요)`;
+                userCoords = { lat: position.coords.latitude, lng: position.coords.longitude };
+                msgEl.textContent = `✅ GPS 수신 완료`;
+                msgEl.style.color = "#16a34a";
                 
                 if(map) {
                     const newPos = new kakao.maps.LatLng(userCoords.lat, userCoords.lng);
                     map.setCenter(newPos);
                     centerMarker.setPosition(newPos);
                 }
-
-                if(csvData.length > 0) {
-                    convertAddressesAndRender();
-                }
+                if(csvData.length > 0) convertAddressesAndRender();
             },
             function(error) {
-                msgEl.textContent = "❌ GPS 수신 실패 (상단 검색창을 이용하여 수동으로 기준치를 잡으세요)";
-                if(csvData.length > 0) {
-                    convertAddressesAndRender();
-                }
+                /* 📝 요청하신 문구로 정밀하게 세팅 완료 */
+                msgEl.textContent = "❌ GPS 수신실패 (검색창으로 위치를 검색하세요)";
+                msgEl.style.color = "#ef4444";
+                if(csvData.length > 0) convertAddressesAndRender();
             },
             gpsOptions
         );
     } else {
-        msgEl.textContent = "⚠️ 모바일 브라우저가 GPS 기능을 지원하지 않습니다.";
+        msgEl.textContent = "⚠️ GPS 미지원 브라우저입니다.";
+        msgEl.style.color = "#f59e0b";
     }
 }
 
@@ -569,10 +691,12 @@ function renderTable(data) {
 
     if (data.length === 0) {
         tbody.innerHTML = `<tr><td colspan="8" style="color:#ef4444; padding:30px; font-weight:bold;">일치하는 조건의 데이터가 존재하지 않습니다.</td></tr>`;
+        displayStoreMarkersOnMap([]); 
         return;
     }
 
     data.sort((a, b) => a.distance - b.distance);
+    displayStoreMarkersOnMap(data);
 
     const limitData = data.slice(0, 100); 
     limitData.forEach(item => {
@@ -635,19 +759,10 @@ document.addEventListener('click', function(e) {
 /*********************************************************************
  * 🔒 [보안 강화] PC 마우스 우클릭, 드래그 블록, 소스보기 단축키 원천 차단
  *********************************************************************/
-document.addEventListener('contextmenu', function(e) {
-    e.preventDefault(); 
-}, false);
-
-document.addEventListener('selectstart', function(e) {
-    e.preventDefault(); 
-}, false);
-
+document.addEventListener('contextmenu', function(e) { e.preventDefault(); }, false);
+document.addEventListener('selectstart', function(e) { e.preventDefault(); }, false);
 document.addEventListener('keydown', function(e) {
-    if (e.keyCode === 123 || 
-        (e.ctrlKey && e.shiftKey && e.keyCode === 73) || 
-        (e.ctrlKey && e.keyCode === 85) || 
-        (e.ctrlKey && e.keyCode === 67)) {
+    if (e.keyCode === 123 || (e.ctrlKey && e.shiftKey && e.keyCode === 73) || (e.ctrlKey && e.keyCode === 85) || (e.ctrlKey && e.keyCode === 67)) {
         e.preventDefault();
         return false;
     }
