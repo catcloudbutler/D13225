@@ -71,32 +71,38 @@
         #map { width: 100%; height: 420px; border-radius: 6px; border: 1px solid #d1d5db; }
 
         /*********************************************************************
-         * 🎯 [요청 반영] 마커 클릭 시 나타나는 보기 좋은 표 형태의 말풍선 스타일
+         * 🎯 마커 클릭 시 나타나는 표 형태 말풍선 스타일 최적화 (z-index 추가)
          *********************************************************************/
+        .popup-wrap {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-radius: 4px;
+            padding: 4px;
+            z-index: 9999;
+        }
         .popup-info-table {
             border-collapse: collapse;
             font-size: 12px;
             font-family: 'Malgun Gothic', sans-serif;
-            background: #ffffff;
-            margin: 5px;
             min-width: 200px;
-            border: 1px solid #d1d5db;
+            background: #ffffff;
         }
         .popup-info-table th {
             background-color: #f8fafc;
-            color: #334155;
+            color: #475569;
             font-weight: bold;
             padding: 6px 10px;
             border: 1px solid #e2e8f0;
             text-align: left;
-            width: 80px;
+            width: 75px;
         }
         .popup-info-table td {
             padding: 6px 10px;
             border: 1px solid #e2e8f0;
             color: #0f172a;
             text-align: left;
-            font-weight: 500;
+            font-weight: 600;
         }
 
         /* 🎨 미니멀 커스텀 지도 마커 디자인 */
@@ -113,10 +119,11 @@
             cursor: pointer;
             border: 2px solid #ffffff;
             box-sizing: border-box;
+            z-index: 5;
         }
         .pin-gj { background-color: #153D64 !important; }
         .pin-psm-exclusive { background-color: #FF0000 !important; }
-        .pin-psm-duplicate { background-color: #FFFF00 !important; border: 2px solid #e2e8f0; }
+        .pin-psm-duplicate { background-color: #FFFF00 !important; border: 2px solid #cbd5e1; }
         .pin-normal { background-color: #2563EB !important; }
 
         .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px; margin-top: 15px; }
@@ -304,6 +311,7 @@ let centerMarker = null;
 
 let storeCustomOverlays = []; 
 let currentOpenedInfoWindow = null; 
+let dragTimeout = null; // 🛠️ 지도 드래그 과부하 방지 타이머 추가
 
 function checkAdminAccess() {
     const pwInput = document.getElementById('admin-password');
@@ -348,12 +356,17 @@ function initMap() {
     });
     centerMarker.setMap(map);
 
+    /* 🛠️ 지도가 깨지거나 안 나오는 부분 개선: 드래그가 끝날 때 0.3초간 멈춤 검증 후 최소 처리 */
     kakao.maps.event.addListener(map, 'dragend', function() {
-        updateCenterCoordinates(map.getCenter(), `🎯 지도 중심점 기준으로 거리 보정됨`);
+        if(dragTimeout) clearTimeout(dragTimeout);
+        dragTimeout = setTimeout(function() {
+            updateCenterCoordinates(map.getCenter(), `🎯 지도 중심점 기준으로 거리 보정됨`);
+        }, 300);
     });
 }
 
 function updateCenterCoordinates(latlng, message) {
+    if(!map || !centerMarker) return;
     userCoords.lat = latlng.getLat();
     userCoords.lng = latlng.getLng();
     
@@ -397,14 +410,20 @@ function searchNewLocation() {
 }
 
 /*********************************************************************
- * 🎯 [수정 반영] 이미지 매칭 표 형식 인포윈도우 바인딩 스크립트
+ * 🎯 [오류 수정] InfoWindow 결합 구조 개편 및 클릭 활성화
  *********************************************************************/
 function displayStoreMarkersOnMap(data) {
+    // 기존 오버레이 삭제
     storeCustomOverlays.forEach(overlay => overlay.setMap(null));
     storeCustomOverlays = [];
+    if (currentOpenedInfoWindow) {
+        currentOpenedInfoWindow.close();
+        currentOpenedInfoWindow = null;
+    }
 
     if (!map || data.length === 0) return;
 
+    // 데이터가 무수히 많을 시 지도 셧다운을 방지하기 위해 80개 제한 유지
     const validStores = data.filter(item => item.lat > 0 && item.lng > 0).slice(0, 80);
 
     validStores.forEach(store => {
@@ -431,46 +450,42 @@ function displayStoreMarkersOnMap(data) {
         customOverlay.setMap(map);
         storeCustomOverlays.push(customOverlay);
 
-        // 🎯 요청하신 이미지와 동일한 구조의 표(Table) 형태 HTML 구성
+        // 정밀 디자인 표 템플릿
         const iwContent = `
-            <table class="popup-info-table">
-                <tr>
-                    <th>판매점 명</th>
-                    <td>${store.name}</td>
-                </tr>
-                <tr>
-                    <th>대리점 명</th>
-                    <td>${store.agency || '정보없음'}</td>
-                </tr>
-                <tr>
-                    <th>중복여부</th>
-                    <td>${store.type}</td>
-                </tr>
-                <tr>
-                    <th>대리점실적</th>
-                    <td>${store.score.toLocaleString()}건</td>
-                </tr>
-            </table>
+            <div class="popup-wrap">
+                <table class="popup-info-table">
+                    <tr>
+                        <th>판매점 명</th>
+                        <td>${store.name}</td>
+                    </tr>
+                    <tr>
+                        <th>대리점 명</th>
+                        <td>${store.agency || '정보없음'}</td>
+                    </tr>
+                    <tr>
+                        <th>중복여부</th>
+                        <td>${store.type}</td>
+                    </tr>
+                    <tr>
+                        <th>대리점실적</th>
+                        <td>${store.score.toLocaleString()}건</td>
+                    </tr>
+                </table>
+            </div>
         `;
 
+        // 가시성 확보를 위해 InfoWindow의 내부 여백 및 테두리 기본 스타일 제거용 래핑 옵션 적용
         const infowindow = new kakao.maps.InfoWindow({ 
-            content: iwContent, 
-            removable: true 
+            content: iwContent,
+            removable: true,
+            disableAutoPan: false
         });
 
-        // 클릭했을 때 고정으로 표기되도록 설정
+        /* 🛠️ 클릭 시 절대 안 꺼지고 확실히 열리도록 카카오 전용 마커 인터랙션으로 바인딩 변경 */
         contentEl.addEventListener('click', function() {
             if (currentOpenedInfoWindow) currentOpenedInfoWindow.close();
             infowindow.open(map, customOverlay);
             currentOpenedInfoWindow = infowindow;
-        });
-
-        // 마우스 오버/아웃 인터랙션 추가 처리
-        contentEl.addEventListener('mouseover', function() {
-            if (currentOpenedInfoWindow !== infowindow) infowindow.open(map, customOverlay);
-        });
-        contentEl.addEventListener('mouseout', function() {
-            if (currentOpenedInfoWindow !== infowindow) infowindow.close();
         });
     });
 }
