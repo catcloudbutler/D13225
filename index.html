@@ -71,11 +71,44 @@
 
         #map { width: 100%; height: 350px; border-radius: 6px; border: 1px solid #d1d5db; }
 
-        .marker-info-window { padding: 8px; font-size: 12px; font-weight: bold; text-align: center; color: #1e293b; min-width: 160px; line-height: 1.4; }
-        .marker-info-dist { color: #2563eb; font-size: 11px; font-weight: normal; margin-top: 2px; }
-        .marker-info-gj { color: #ffffff; background-color: #153D64; font-size: 11px; font-weight: bold; padding: 2px 4px; margin-top: 2px; border-radius: 3px; }
-        .marker-info-psm { color: #ffffff; background-color: #FF0000; font-size: 11px; font-weight: bold; padding: 2px 4px; margin-top: 2px; border-radius: 3px; }
-        .marker-info-psm-dup { color: #1e293b; background-color: #eab308; font-size: 11px; font-weight: bold; padding: 2px 4px; margin-top: 2px; border-radius: 3px; }
+        /*********************************************************************
+         * 🎨 [요청 반영] 예시 이미지 디자인 맞춤형 커스텀 마커 CSS 레이아웃
+         *********************************************************************/
+        .custom-pin-marker {
+            position: relative;
+            width: 50px;
+            height: 50px;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: -1px 2px 5px rgba(0,0,0,0.35);
+            cursor: pointer;
+            border: 2px solid #ffffff;
+        }
+        .custom-pin-marker span {
+            transform: rotate(45deg);
+            font-size: 11px;
+            font-weight: bold;
+            white-space: nowrap;
+            text-align: center;
+        }
+        /* 1순위: 광장대리점 디자인 */
+        .pin-gj { background-color: #153D64 !important; color: #FFFF00 !important; }
+        /* 2순위: PS&M 전속 디자인 */
+        .pin-psm-exclusive { background-color: #FF0000 !important; color: #FFFFFF !important; }
+        /* 3순위: PS&M 중복점 디자인 */
+        .pin-psm-duplicate { background-color: #FFFF00 !important; color: #1F2937 !important; border: 2px solid #e2e8f0; }
+        /* 4순위: 일반 디자인 */
+        .pin-normal { background-color: #2563EB !important; color: #FFFFFF !important; }
+
+        /* 인포윈도우 스타일 정의 */
+        .marker-info-window { padding: 10px; font-size: 12px; font-weight: bold; text-align: center; color: #1e293b; min-width: 170px; line-height: 1.5; }
+        .marker-info-dist { color: #2563eb; font-size: 11px; font-weight: normal; margin-top: 3px; }
+        .marker-info-gj { color: #FFFF00; background-color: #153D64; font-size: 11px; font-weight: bold; padding: 3px 5px; margin-top: 4px; border-radius: 4px; }
+        .marker-info-psm { color: #ffffff; background-color: #FF0000; font-size: 11px; font-weight: bold; padding: 3px 5px; margin-top: 4px; border-radius: 4px; }
+        .marker-info-psm-dup { color: #1e293b; background-color: #FFFF00; font-size: 11px; font-weight: bold; padding: 3px 5px; margin-top: 4px; border-radius: 4px; border: 1px solid #cbd5e1; }
 
         .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px; }
         .filter-group { display: flex; flex-direction: column; position: relative; }
@@ -125,7 +158,7 @@
         .badge-score { background-color: #e0f2fe; color: #0369a1; }  
         .badge-type { background-color: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db; }
 
-        /* 🎨 [요청 반영] 대리점 및 중복여부 맞춤형 디자인 배지 스타일 */
+        /* 테이블 뱃지 전용 맞춤 스타일 */
         .badge-gj-agency { background-color: #153D64 !important; color: #FFFF00 !important; border: none; }
         .badge-psm-agency { background-color: #FF0000 !important; color: #FFFFFF !important; border: none; }
 
@@ -180,7 +213,7 @@
         <div class="map-title">
             <div>
                 <span>📍 내 기준위치 보정 및 주변 거래처 시각화</span>
-                <span class="map-hint" style="display:block; margin-top:2px;">💡 장소를 검색하면 주변 거래처(최대 30개)가 지도에 핀으로 표시됩니다.</span>
+                <span class="map-hint" style="display:block; margin-top:2px;">💡 장소를 검색하면 주변 거래처(최대 30개)가 지도에 맞춤 마커로 표시됩니다.</span>
             </div>
             
             <div class="admin-pw-box">
@@ -262,8 +295,7 @@ let placesService = null;
 let map = null;
 let centerMarker = null;
 
-let storeMarkers = [];
-let infoWindows = [];
+let storeCustomOverlays = []; 
 
 function checkAdminAccess() {
     const pwInput = document.getElementById('admin-password');
@@ -356,91 +388,81 @@ function searchNewLocation() {
     });
 }
 
+/*********************************************************************
+ * 🎨 [요청 반영] 다이내믹 커스텀 오버레이 마커 랜더링 시스템 구축
+ *********************************************************************/
 function displayStoreMarkersOnMap(data) {
-    storeMarkers.forEach(marker => marker.setMap(null));
-    infoWindows.forEach(iw => iw.close());
-    storeMarkers = [];
-    infoWindows = [];
+    storeCustomOverlays.forEach(overlay => overlay.setMap(null));
+    storeCustomOverlays = [];
 
     if (!map || data.length === 0) return;
 
-    // 📌 상위 최대 30개 주변 거래처 바인딩
     const validStores = data.filter(item => item.lat > 0 && item.lng > 0).slice(0, 30);
-
-    /* 🎨 [요청 반영] 마커 색상 구분 정의 */
-    // 1. 광장대리점 (#153D64) 마커 -> 스카이블루/네이비 디자인 핀 대체 사용
-    const gjMarkerImage = new kakao.maps.MarkerImage(
-        'https://t1.daumcdn.net/localimg/localimages/07/2018/pc/img/marker_blue.png',
-        new kakao.maps.Size(24, 35), { offset: new kakao.maps.Point(12, 35) }
-    );
-
-    // 2. PS&M + PS_전속 (#FF0000) 마커 -> 빨간색 별 모양 마커
-    const psmRedMarkerImage = new kakao.maps.MarkerImage(
-        'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png', 
-        new kakao.maps.Size(24, 35)
-    );
-
-    // 3. PS&M + 중복점 마커 -> 노란색 기본 마커
-    const psmYellowMarkerImage = new kakao.maps.MarkerImage(
-        'https://t1.daumcdn.net/localimg/localimages/07/2018/pc/img/marker_yellow.png',
-        new kakao.maps.Size(24, 35), { offset: new kakao.maps.Point(12, 35) }
-    );
 
     validStores.forEach(store => {
         const markerPosition = new kakao.maps.LatLng(store.lat, store.lng);
-        const markerOptions = { position: markerPosition };
         
         const isGJ = store.agency.includes('광장대리점');
         const isPSM = store.agency.toUpperCase().includes('PS&M') || store.agency.includes('피에스앤마케팅');
         
-        let markerState = "normal"; 
+        let pinClass = "pin-normal";
+        let pinText = "일반";
+        let markerTag = `<div style="color:#4b5563; font-size:11px;">일반 거래처 (${store.agency || '정보없음'})</div>`;
 
+        // 🥇 1순위: 대리점명에 광장대리점이 있는 곳
         if (isGJ) {
-            markerOptions.image = gjMarkerImage;
-            markerState = "gj";
-        } else if (isPSM && store.type === 'PS_전속') {
-            markerOptions.image = psmRedMarkerImage;
-            markerState = "psm_exclusive";
-        } else if (isPSM && store.type === '중복점') {
-            markerOptions.image = psmYellowMarkerImage;
-            markerState = "psm_duplicate";
+            pinClass = "pin-gj";
+            pinText = "광장";
+            markerTag = `<div class="marker-info-gj">🔷 광장대리점 매장 (#153D64)</div>`;
+        } 
+        // 🥈 2순위: PS&M 이면서 중복여부가 PS_전속인 경우
+        else if (isPSM && store.type === 'PS_전속') {
+            pinClass = "pin-psm-exclusive";
+            pinText = "전속";
+            markerTag = `<div class="marker-info-psm">🔴 PS&M 전속 매장 (#FF0000)</div>`;
+        } 
+        // 🥉 3순위: PS&M 이면서 중복여부가 중복점인 경우
+        else if (isPSM && store.type === '중복점') {
+            pinClass = "pin-psm-duplicate";
+            pinText = "중복";
+            markerTag = `<div class="marker-info-psm-dup">🟡 PS&M 중복 매장 (노란색)</div>`;
         }
 
-        const marker = new kakao.maps.Marker(markerOptions);
-        marker.setMap(map);
-        storeMarkers.push(marker);
+        // 디자인 마커 DOM 엘리먼트 동적 생성
+        const contentEl = document.createElement('div');
+        contentEl.className = `custom-pin-marker ${pinClass}`;
+        contentEl.innerHTML = `<span>${pinText}</span>`;
+
+        const customOverlay = new kakao.maps.CustomOverlay({
+            position: markerPosition,
+            content: contentEl,
+            yAnchor: 1.0, 
+            xAnchor: 0.5  
+        });
+
+        customOverlay.setMap(map);
+        storeCustomOverlays.push(customOverlay);
 
         const distText = store.distance < 1 
             ? `${(store.distance * 1000).toFixed(0)}m` 
             : `${store.distance.toFixed(2)}km`;
 
-        let tagText = `<div style="color:#4b5563; font-size:11px;">일반 거래처 (${store.agency || '정보없음'})</div>`;
-        if (markerState === "gj") {
-            tagText = `<div class="marker-info-gj">🔷 광장대리점 매장 (#153D64)</div>`;
-        } else if (markerState === "psm_exclusive") {
-            tagText = `<div class="marker-info-psm">🔴 PS&M 전속 매장 (#FF0000)</div>`;
-        } else if (markerState === "psm_duplicate") {
-            tagText = `<div class="marker-info-psm-dup">🟡 PS&M 중복 매장 (노란색)</div>`;
-        }
-
         const iwContent = `
             <div class="marker-info-window">
                 <div>🏢 ${store.name}</div>
                 <div class="marker-info-dist">📏 거리: ${distText}</div>
-                ${tagText}
+                ${markerTag}
             </div>
         `;
 
         const infowindow = new kakao.maps.InfoWindow({ content: iwContent, removable: true });
-        infoWindows.push(infowindow);
 
-        kakao.maps.event.addListener(marker, 'click', function() {
-            infoWindows.forEach(iw => iw.close()); 
-            infowindow.open(map, marker);
+        // 오버레이 엘리먼트 클릭 및 마우스오버 이벤트 추가
+        contentEl.addEventListener('click', function() {
+            infowindow.open(map, customOverlay);
         });
-        
-        kakao.maps.event.addListener(marker, 'mouseover', function() {
-            infowindow.open(map, marker);
+        contentEl.addEventListener('mouseover', function() {
+            infowindow.open(map, customOverlay);
         });
     });
 }
@@ -736,7 +758,6 @@ function renderTable(data) {
     data.sort((a, b) => a.distance - b.distance);
     displayStoreMarkersOnMap(data);
 
-    // 📌 [기존 설정 유지] 목록 최대 80개 제한 노출
     const limitData = data.slice(0, 80); 
     limitData.forEach(item => {
         const fullAddress = `${item.sido} ${item.sigungu} ${item.address}`.trim();
@@ -745,15 +766,14 @@ function renderTable(data) {
 
         const isDuplicateRow = pcodeCounts[item.pcode] > 1 ? 'class="duplicate-row"' : '';
         
-        /* 🎨 [요청 반영] 대리점에 따른 전용 배경 및 글자색 매칭 스타일 정의 */
         const isGJ = item.agency.includes('광장대리점');
         const isPSM = item.agency.toUpperCase().includes('PS&M') || item.agency.includes('피에스앤마케팅');
         
         let agencyBadgeClass = 'badge';
         if (isGJ) {
-            agencyBadgeClass += ' badge-gj-agency'; // 배경 #153D64, 글자 노란색
+            agencyBadgeClass += ' badge-gj-agency'; 
         } else if (isPSM) {
-            agencyBadgeClass += ' badge-psm-agency'; // 배경 #FF0000, 글자 흰색
+            agencyBadgeClass += ' badge-psm-agency'; 
         } else {
             agencyBadgeClass += ' badge-type';
         }
