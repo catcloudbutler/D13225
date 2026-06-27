@@ -9,186 +9,121 @@
     <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=47d0f2bd29fbb279cb461bdad2cf1097&libraries=services"></script>
     
     <style>
-        body { 
-            font-family: 'Malgun Gothic', sans-serif; 
-            padding: 15px; 
-            background-color: #f3f4f6; 
-            color: #1f2937; 
-            margin: 0; 
-            
-            /* 🔒 [보안] 모바일 및 PC 전체 복사/드래그 금지 CSS */
-            -webkit-user-select: none;  /* 사파리/크롬 모바일 */
-            -moz-user-select: none;     /* 파이어폭스 */
-            -ms-user-select: none;      /* 익스플로러 */
-            user-select: none;          /* 표준 속성 */
-        }
+        body { font-family: 'Malgun Gothic', sans-serif; padding: 15px; background-color: #f3f4f6; color: #1f2937; margin: 0; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
         .container { max-width: 1400px; margin: 0 auto; background: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         h2 { text-align: center; color: #111827; margin-bottom: 20px; font-size: 20px; }
 
-        .upload-section { background: #f0fdf4; border: 2px dashed #bbf7d0; border-radius: 8px; padding: 12px 15px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+        #server-lock-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #ffffff; z-index: 99999; flex-direction: column; align-items: center; justify-content: center; color: #1f2937; text-align: center; }
+        #server-lock-screen h1 { font-size: 28px; color: #ef4444; margin-bottom: 10px; }
+
+        .upload-section { background: #f0fdf4; border: 2px dashed #bbf7d0; border-radius: 8px; padding: 12px 15px; margin-bottom: 20px; display: none; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
         .upload-info { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #166534; }
-        .upload-info b { color: #15803d; }
-        .file-label { background-color: #16a34a; color: white; padding: 8px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; display: inline-block; transition: background 0.2s; white-space: nowrap; }
-        .file-label:hover { background-color: #15803d; }
+        .file-label { background-color: #16a34a; color: white; padding: 8px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; display: inline-block; }
         #csv-file { display: none; }
 
-        /* 지도 및 내 위치 검색 영역 스타일 */
-        .map-section { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 20px; }
+        .map-section { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 15px; }
         .map-title { font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #374151; display: flex; justify-content: space-between; align-items: center; }
-        .map-hint { font-size: 11px; color: #6b7280; font-weight: normal; }
-        
-        /* 📍 내 위치 장소 검색창 스타일 */
-        .location-search-box { display: flex; gap: 6px; margin-bottom: 10px; }
-        .location-search-input { flex: 1; padding: 8px 12px; border: 1px solid #2563eb; border-radius: 6px; font-size: 13px; outline: none; }
-        .btn-location-search { padding: 8px 16px; background-color: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; white-space: nowrap; }
-        .btn-location-search:hover { background-color: #1d4ed8; }
+        .location-search-box { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; width: 100%; }
+        .location-search-input { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #2563eb; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; }
+        .btn-location-search { padding: 8px 16px; background-color: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; }
+        .btn-gps { padding: 8px 14px; background-color: #7c3aed; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; }
+        .top-gps-msg { font-size: 12px; font-weight: bold; color: #6b21a8; margin-left: 4px; }
+        #map { width: 100%; height: 420px; border-radius: 6px; border: 1px solid #d1d5db; }
 
-        #map { width: 100%; height: 300px; border-radius: 6px; border: 1px solid #d1d5db; }
+        .popup-wrap { background: #ffffff; padding: 6px; border-radius: 4px; }
+        .popup-info-table { border-collapse: collapse; font-size: 12px; min-width: 200px; background: #ffffff; }
+        .popup-info-table th { background-color: #f8fafc; color: #475569; font-weight: bold; padding: 6px; border: 1px solid #e2e8f0; text-align: left; width: 70px; }
+        .popup-info-table td { padding: 6px; border: 1px solid #e2e8f0; color: #0f172a; text-align: left; font-weight: bold; }
 
-        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px; }
+        .custom-pin-marker { position: relative; width: 24px; height: 24px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; box-shadow: -1px 2px 4px rgba(0,0,0,0.3); cursor: pointer; border: 2px solid #ffffff; }
+        .pin-gj { background-color: #153D64 !important; }
+        .pin-psm-exclusive { background-color: #FF0000 !important; }
+        .pin-psm-duplicate { background-color: #FFFF00 !important; border: 2px solid #cbd5e1; }
+        .pin-normal { background-color: #2563EB !important; }
+
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px; margin-top: 15px; }
         .filter-group { display: flex; flex-direction: column; position: relative; }
         .filter-group label { font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #4b5563; }
-        .search-input { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; width: 100%; background-color: #fff; }
-        
+        .search-input { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; outline: none; background-color: #fff; }
         .dropdown-list { position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #d1d5db; border-radius: 0 0 6px 6px; max-height: 180px; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.05); z-index: 1000; display: none; margin: 0; padding: 0; list-style: none; }
         .dropdown-list li { padding: 8px 10px; cursor: pointer; font-size: 13px; }
         .dropdown-list li:hover { background-color: #f3f4f6; }
-        
         .btn-group { display: flex; gap: 8px; margin-top: auto; }
-        .btn-reset { flex: 1; padding: 9px; background-color: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; white-space: nowrap; }
+        .btn-reset { flex: 1; padding: 9px; background-color: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; }
         .btn-reset:hover { background-color: #dc2626; }
-        .btn-gps { padding: 9px 12px; background-color: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; white-space: nowrap; }
-        .btn-gps:hover { background-color: #1d4ed8; }
 
-        .table-container { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 8px; max-height: 550px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .admin-pw-box { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+        .admin-pw-input { padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; width: 110px; text-align: center; }
+
+        .table-container { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 8px; max-height: 550px; overflow-y: auto; }
         table { width: 100%; min-width: 1000px; border-collapse: collapse; font-size: 13px; text-align: center; table-layout: fixed; }
-        
-        th:nth-child(1), td:nth-child(1) { width: 95px; }  
-        th:nth-child(2), td:nth-child(2) { width: 140px; } 
-        th:nth-child(3), td:nth-child(3) { width: 85px; }  
-        th:nth-child(4), td:nth-child(4) { width: auto; }   
-        th:nth-child(5), td:nth-child(5) { width: 120px; } 
-        th:nth-child(6), td:nth-child(6) { width: 95px; }  
-        th:nth-child(7), td:nth-child(7) { width: 85px; }  
-        th:nth-child(8), td:nth-child(8) { width: 105px; } 
-
+        th:nth-child(1), td:nth-child(1) { width: 95px; } th:nth-child(2), td:nth-child(2) { width: 140px; } th:nth-child(3), td:nth-child(3) { width: 85px; } th:nth-child(4), td:nth-child(4) { width: auto; } th:nth-child(5), td:nth-child(5) { width: 125px; } th:nth-child(6), td:nth-child(6) { width: 95px; } th:nth-child(7), td:nth-child(7) { width: 85px; } th:nth-child(8), td:nth-child(8) { width: 105px; } 
         th, td { padding: 10px 8px; border-bottom: 1px solid #e5e7eb; box-sizing: border-box; }
         th { background-color: #f3f4f6; color: #374151; font-weight: 700; position: sticky; top: 0; z-index: 10; }
         td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         td.text-left { text-align: left; white-space: normal; word-break: break-all; } 
+        tr { transition: background-color 0.2s; }
         tr:hover { background-color: #f1f5f9; }
-        
-        tr.duplicate-row { background-color: #FFFFCC !important; }
-        tr.duplicate-row:hover { background-color: #fef08a !important; }
+        tr.duplicate-row { background-color: #FFFFCC; }
 
-        .map-link { color: #2563eb; text-decoration: none; font-weight: 500; display: inline-block; vertical-align: middle; }
-        .map-link:hover { text-decoration: underline; color: #1d4ed8; }
-        
-        .distance-tag { font-size: 11px; background-color: #f3e8ff; color: #6b21a8; padding: 2px 7px; border-radius: 20px; font-weight: bold; margin-left: 6px; display: inline-block; vertical-align: middle; white-space: nowrap; }
+        .map-link { color: #2563eb; text-decoration: none; font-weight: 500; }
+        .distance-tag { font-size: 11px; background-color: #f3e8ff; color: #6b21a8; padding: 2px 7px; border-radius: 20px; font-weight: bold; margin-left: 6px; }
 
         .badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; display: inline-block; }
         .badge-total { background-color: #dcfce7; color: #166534; }  
         .badge-score { background-color: #e0f2fe; color: #0369a1; }  
         .badge-type { background-color: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db; }
-        
-        .badge-ps-exclusive { background-color: #ef4444 !important; color: #fef08a !important; border: none !important; }
-        .badge-pro-agency { background-color: #1e3a8a !important; color: #fef08a !important; }
+        .badge-gj-agency { background-color: #153D64 !important; color: #FFFF00 !important; }
+        .badge-psm-agency { background-color: #FF0000 !important; color: #FFFFFF !important; }
 
         .info-status { font-size: 13px; font-weight: bold; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
         .total-count { color: #2563eb; }
-        .gps-status { color: #6b21a8; font-size: 12px; text-align: right; }
 
-        @media (max-width: 768px) {
-            body { padding: 8px; }
-            .container { padding: 12px; border-radius: 8px; }
-            h2 { font-size: 17px; margin-bottom: 15px; }
-            .filter-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 10px; }
-            .btn-group { grid-column: span 2; margin-top: 5px; }
-            table { font-size: 12px; min-width: 1050px; } 
-            th, td { padding: 8px 5px; }
-            .badge { font-size: 10px; padding: 2px 4px; }
-            .distance-tag { font-size: 10px; padding: 1px 5px; }
-            #map { height: 220px; }
-        }
+        @media (max-width: 768px) { .filter-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; } .btn-group { grid-column: span 2; } #map { height: 320px; } }
     </style>
 </head>
 <body>
 
+<div id="server-lock-screen"><h1>⚠️ 시스템 일시 점검 안내</h1></div>
+
 <div class="container">
     <h2>🏢 판매점 데이터 통합 조회 시스템</h2>
-
-    <div class="upload-section">
-        <div class="upload-info">
-            <span>📊 <b>분석 대상 파일:</b> <span id="target-file-name" style="font-weight: bold; color: #2563eb;">전거래처_PS중복.csv (서버 자동 연동)</span></span>
-        </div>
-        <div>
-            <label for="csv-file" class="file-label">📂 다른 파일 첨부/교체</label>
-            <input type="file" id="csv-file" accept=".csv" onchange="handleFileSelect(event)">
-        </div>
+    <div id="admin-upload-panel" class="upload-section">
+        <div class="upload-info"><span>📊 <b>분석 대상 파일:</b> <span id="target-file-name" style="font-weight: bold; color: #2563eb;">전거래처_PS중복.csv</span></span></div>
+        <div><label for="csv-file" class="file-label">📂 파일 교체</label><input type="file" id="csv-file" accept=".csv" onchange="handleFileSelect(event)"></div>
     </div>
 
     <div class="map-section">
         <div class="map-title">
-            <span>📍 내 기준위치 보정 및 검색</span>
-            <span class="map-hint">💡 장소를 검색하거나 지도를 움직이면 그 자리가 '내 위치'가 됩니다.</span>
+            <span>📍 내 기준위치 보정 및 주변 거래처 시각화</span>
+            <div class="admin-pw-box"><input type="password" id="admin-password" class="admin-pw-input" placeholder="🔒 관리자 인증" onkeydown="if(event.keyCode === 13) checkAdminAccess();"></div>
         </div>
-        
         <div class="location-search-box">
-            <input type="text" id="map-search-keyword" class="location-search-input" placeholder="이동할 기준 장소나 주소를 입력하세요 (예: 강남역, 대전시청)" onkeydown="if(event.keyCode === 13) searchNewLocation();">
+            <input type="text" id="map-search-keyword" class="location-search-input" placeholder="이동할 기준 장소나 주소를 입력하세요 (예: 중곡역, 목동역)" onkeydown="if(event.keyCode === 13) searchNewLocation();">
             <button class="btn-location-search" onclick="searchNewLocation()">위치 이동</button>
+            <button class="btn-gps" onclick="getUserLocation(true)">📍 현재 GPS 재수신</button>
+            <span id="gps-msg" class="top-gps-msg">위치 신호를 탐색하고 있습니다...</span>
         </div>
-        
         <div id="map"></div>
     </div>
 
     <div class="filter-grid">
-        <div class="filter-group">
-            <label>시도명 검색</label>
-            <input type="text" id="search-sido" class="search-input" placeholder="🔍 시도명 입력" onfocus="showDropdown('sido')" oninput="filterDropdown('sido')" autocomplete="off">
-            <ul id="sido-list" class="dropdown-list"></ul>
-        </div>
-        <div class="filter-group">
-            <label>시군구명 검색</label>
-            <input type="text" id="search-sigungu" class="search-input" placeholder="🔍 시군구명 입력" onfocus="showDropdown('sigungu')" oninput="filterDropdown('sigungu')" autocomplete="off">
-            <ul id="sigungu-list" class="dropdown-list"></ul>
-        </div>
-        <div class="filter-group">
-            <label>읍면동명 검색</label>
-            <input type="text" id="search-dong" class="search-input" placeholder="🔍 읍면동명 입력" onfocus="showDropdown('dong')" oninput="filterDropdown('dong')" autocomplete="off">
-            <ul id="dong-list" class="dropdown-list"></ul>
-        </div>
-        <div class="filter-group">
-            <label>중복여부 검색</label>
-            <input type="text" id="search-type" class="search-input" placeholder="🔍 중복여부 선택" onfocus="showDropdown('type')" oninput="filterDropdown('type')" autocomplete="off">
-            <ul id="type-list" class="dropdown-list"></ul>
-        </div>
-        <div class="btn-group">
-            <button class="btn-gps" onclick="getUserLocation()">📍 현재 GPS 재수신</button>
-            <button class="btn-reset" onclick="resetAllFilters()">필터 초기화</button>
-        </div>
+        <div class="filter-group"><label>시도명</label><input type="text" id="search-sido" class="search-input" onfocus="showDropdown('sido')" oninput="filterDropdown('sido')" autocomplete="off"><ul id="sido-list" class="dropdown-list"></ul></div>
+        <div class="filter-group"><label>시군구명</label><input type="text" id="search-sigungu" class="search-input" onfocus="showDropdown('sigungu')" oninput="filterDropdown('sigungu')" autocomplete="off"><ul id="sigungu-list" class="dropdown-list"></ul></div>
+        <div class="filter-group"><label>읍면동명</label><input type="text" id="search-dong" class="search-input" onfocus="showDropdown('dong')" oninput="filterDropdown('dong')" autocomplete="off"><ul id="dong-list" class="dropdown-list"></ul></div>
+        <div class="filter-group"><label>중복여부</label><input type="text" id="search-type" class="search-input" onfocus="showDropdown('type')" oninput="filterDropdown('type')" autocomplete="off"><ul id="type-list" class="dropdown-list"></ul></div>
+        <div class="btn-group"><button class="btn-reset" onclick="resetAllFilters()">초기화</button></div>
     </div>
 
     <div>
-        <div class="info-status">
-            <div class="total-count">📊 조회된 판매점 목록: <span id="count">0</span>건</div>
-            <div id="gps-msg" class="gps-status">위치 정보를 불러오는 중이 아닙니다.</div>
-        </div>
+        <div class="info-status"><div class="total-count">📊 조회된 판매점 목록: <span id="count">0</span>건</div></div>
         <div class="table-container">
             <table>
                 <thead>
-                    <tr>
-                        <th>P코드</th>
-                        <th>거래처명</th>
-                        <th>읍면동</th>
-                        <th class="text-left">상세주소 (현재거리)</th>
-                        <th>대리점명</th>
-                        <th>중복여부</th>
-                        <th>점유비</th>
-                        <th>대리점실적</th>
-                    </tr>
+                    <tr><th>P코드</th><th>거래처명</th><th>읍면동</th><th class="text-left">상세주소 (현재거리)</th><th>대리점명</th><th>중복여부</th><th>점유비</th><th>대리점실적</th></tr>
                 </thead>
                 <tbody id="table-body">
-                    <tr><td id="status-msg" colspan="8" style="padding:30px; color:#2563eb; font-weight:bold;">🔄 데이터를 검증하고 매칭하는 중입니다...</td></tr>
+                    <tr><td id="status-msg" colspan="8" style="padding:30px; color:#2563eb; font-weight:bold;">🔄 데이터를 불러오는 중입니다...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -196,149 +131,213 @@
 </div>
 
 <script>
+let isServerOpen = true; 
 let csvData = [];
 let filters = { sido: "", sigungu: "", dong: "", type: "" };
 let pcodeCounts = {}; 
 let userCoords = { lat: 37.5665, lng: 126.9780 }; 
 let geocoder = null;
-let placesService = null; // 장소 검색용 서비스 객체
+let placesService = null; 
 let map = null;
 let centerMarker = null;
+let storeCustomOverlays = []; 
+let currentOpenedInfoWindow = null; 
+let dragTimeout = null;
+let searchMode = 'filter';
+
+function checkAdminAccess() {
+    const pwInput = document.getElementById('admin-password');
+    if (pwInput.value === 'd13225##') { document.getElementById('admin-upload-panel').style.display = 'flex'; pwInput.disabled = true; } 
+    else { alert('올바르지 않은 비밀번호입니다.'); }
+}
 
 function initMap() {
     const mapContainer = document.getElementById('map');
     if (!mapContainer || typeof kakao === 'undefined') return;
 
-    const mapOption = {
-        center: new kakao.maps.LatLng(userCoords.lat, userCoords.lng),
-        level: 5
-    };
-
-    map = new kakao.maps.Map(mapContainer, mapOption);
+    map = new kakao.maps.Map(mapContainer, { center: new kakao.maps.LatLng(userCoords.lat, userCoords.lng), level: 5 });
     geocoder = new kakao.maps.services.Geocoder();
-    placesService = new kakao.maps.services.Places(); // 키워드 검색 객체 초기화
+    placesService = new kakao.maps.services.Places(); 
 
     centerMarker = new kakao.maps.Marker({
-        position: map.getCenter()
+        position: map.getCenter(),
+        image: new kakao.maps.MarkerImage('https://t1.daumcdn.net/localimg/localimages/07/2018/pc/img/marker_spot.png', new kakao.maps.Size(24, 35))
     });
     centerMarker.setMap(map);
 
-    // 지도를 드래그해서 움직였을 때 이벤트
     kakao.maps.event.addListener(map, 'dragend', function() {
-        updateCenterCoordinates(map.getCenter(), `🎯 지도 중심점 기준으로 거리 계산 보정됨`);
+        if(dragTimeout) clearTimeout(dragTimeout);
+        dragTimeout = setTimeout(function() {
+            searchMode = 'map';
+            updateCenterCoordinates(map.getCenter(), `🎯 지도 중심점 기준으로 거리 보정됨`);
+        }, 300);
     });
 }
 
-// 🎯 기준위치 좌표 변경 및 거리 재계산 통합 처리 함수
 function updateCenterCoordinates(latlng, message) {
+    if(!map || !centerMarker) return;
     userCoords.lat = latlng.getLat();
     userCoords.lng = latlng.getLng();
-    
     centerMarker.setPosition(latlng);
     document.getElementById('gps-msg').textContent = message;
-
-    recalculateDistances();
-    applyFilters();
+    recalculateDistancesAndFetchCoordinates();
 }
 
-// 🔍 [장소/주소 통합 검색] 기능
 function searchNewLocation() {
     const keyword = document.getElementById('map-search-keyword').value.trim();
-    if (!keyword) {
-        alert('이동할 장소나 주소를 입력해 주세요.');
-        return;
-    }
+    if (!keyword) return;
 
-    if (!placesService || !geocoder) return;
-
-    // 1단계: 키워드(장소명) 검색 먼저 수행
+    searchMode = 'map';
     placesService.keywordSearch(keyword, function(data, status) {
         if (status === kakao.maps.services.Status.OK) {
-            // 가장 연관도 높은 첫 번째 검색 결과로 이동
-            const firstResult = data[0];
-            const moveLatLng = new kakao.maps.LatLng(firstResult.y, firstResult.x);
-            
+            const moveLatLng = new kakao.maps.LatLng(data[0].y, data[0].x);
             map.setCenter(moveLatLng);
-            updateCenterCoordinates(moveLatLng, `🔎 검색 위치로 이동됨: ${firstResult.place_name}`);
+            updateCenterCoordinates(moveLatLng, `🔎 검색 위치 이동: ${data[0].place_name}`);
         } else {
-            // 장소명 검색 실패 시 2단계: 주소 검색으로 재시도
             geocoder.addressSearch(keyword, function(result, addressStatus) {
                 if (addressStatus === kakao.maps.services.Status.OK) {
                     const moveLatLng = new kakao.maps.LatLng(result[0].y, result[0].x);
-                    
                     map.setCenter(moveLatLng);
-                    updateCenterCoordinates(moveLatLng, `🔎 검색 주소로 이동됨: ${keyword}`);
-                } else {
-                    alert('입력하신 장소나 주소를 찾을 수 없습니다. 정확히 입력해 주세요.');
+                    updateCenterCoordinates(moveLatLng, `🔎 검색 주소 이동: ${keyword}`);
                 }
             });
         }
     });
 }
 
-window.onload = function() {
-    if (typeof kakao !== 'undefined') {
-        initMap();
-    }
-    
-    const currentUrl = window.location.href.split('?')[0].split('#')[0];
-    const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/')) + '/';
-    const targetFileUrl = baseUrl + '전거래처_PS중복.csv';
-
-    getUserLocation(true);
-
-    fetch(targetFileUrl)
-    .then(res => {
-        if(!res.ok) throw new Error("서버 파일 로드 실패 (코드: " + res.status + ")");
-        return res.blob(); 
-    })
-    .then(blob => {
-        parseCSVFile(blob);
-    })
-    .catch(err => {
-        document.getElementById('status-msg').innerHTML = `<span style="color:#ef4444;">⚠️ 서버 데이터 로드 실패<br>[원인]: ${err.message}</span>`;
+async function recalculateDistancesAndFetchCoordinates() {
+    const filteredData = csvData.filter(item => {
+        return (!filters.sido || item.sido.includes(filters.sido)) &&
+               (!filters.sigungu || item.sigungu.includes(filters.sigungu)) &&
+               (!filters.dong || item.dong.includes(filters.dong)) &&
+               (!filters.type || item.type.includes(filters.type));
     });
+
+    filteredData.forEach(item => {
+        if (item.lat && item.lng) {
+            item.distance = getDistanceHaversine(userCoords.lat, userCoords.lng, item.lat, item.lng);
+        } else {
+            item.distance = 999; 
+        }
+    });
+    filteredData.sort((a, b) => a.distance - b.distance);
+
+    const limitCount = searchMode === 'filter' ? 80 : 20;
+    const targetStores = filteredData.slice(0, limitCount);
+
+    if(targetStores.length === 0) {
+        renderTableAndMarkers(filteredData, [], limitCount);
+        return;
+    }
+
+    for (let item of targetStores) {
+        const fullAddr = `${item.sido} ${item.sigungu} ${item.address}`.trim();
+        await new Promise((resolve) => {
+            geocoder.addressSearch(fullAddr, function(result, status) {
+                if (status === kakao.maps.services.Status.OK) {
+                    item.lat = parseFloat(result[0].y); 
+                    item.lng = parseFloat(result[0].x); 
+                    item.distance = getDistanceHaversine(userCoords.lat, userCoords.lng, item.lat, item.lng);
+                }
+                resolve();
+            });
+        });
+    }
+
+    filteredData.sort((a, b) => a.distance - b.distance);
+    const finalMarkers = filteredData.slice(0, limitCount);
+    renderTableAndMarkers(filteredData, finalMarkers, limitCount);
+}
+
+function renderTableAndMarkers(allData, markerData, limitCount) {
+    storeCustomOverlays.forEach(overlay => overlay.setMap(null));
+    storeCustomOverlays = [];
+    if (currentOpenedInfoWindow) currentOpenedInfoWindow.close();
+
+    // 🎯 마커 렌더링 시 bounds(영역) 객체 생성 
+    let bounds = new kakao.maps.LatLngBounds();
+    bounds.extend(centerMarker.getPosition()); // 중심 기준 핀 포함
+
+    markerData.forEach(store => {
+        if (!store.lat || !store.lng) return;
+
+        const markerPosition = new kakao.maps.LatLng(store.lat, store.lng);
+        bounds.extend(markerPosition); // 보여질 마커들의 위치를 bounds에 추가
+
+        const isGJ = store.agency.includes('광장대리점');
+        const isPSM = store.agency.toUpperCase().includes('PS&M') || store.agency.includes('피에스앤마케팅');
+        
+        let pinClass = "pin-normal";
+        if (isGJ) pinClass = "pin-gj"; 
+        else if (isPSM && store.type === 'PS_전속') pinClass = "pin-psm-exclusive"; 
+        else if (isPSM && store.type === '중복점') pinClass = "pin-psm-duplicate";
+
+        const contentEl = document.createElement('div');
+        contentEl.className = `custom-pin-marker ${pinClass}`;
+
+        const customOverlay = new kakao.maps.CustomOverlay({ position: markerPosition, content: contentEl, yAnchor: 1.0, xAnchor: 0.5 });
+        customOverlay.setMap(map);
+        storeCustomOverlays.push(customOverlay);
+
+        const iwContent = `<div class="popup-wrap"><table class="popup-info-table"><tr><th>판매점 명</th><td>${store.name}</td></tr><tr><th>대리점 명</th><td>${store.agency || '정보없음'}</td></tr><tr><th>중복여부</th><td>${store.type}</td></tr><tr><th>대리점실적</th><td>${store.score.toLocaleString()}건</td></tr></table></div>`;
+        const infowindow = new kakao.maps.InfoWindow({ content: iwContent, removable: true });
+        contentEl.addEventListener('click', function() {
+            if (currentOpenedInfoWindow) currentOpenedInfoWindow.close();
+            infowindow.open(map, customOverlay);
+            currentOpenedInfoWindow = infowindow;
+        });
+    });
+
+    // 🎯 마커가 하나 이상 있으면 지도 영역(Bounds)을 자동으로 맞춰줌
+    if (markerData.length > 0 && map) {
+        map.setBounds(bounds);
+    }
+
+    const tbody = document.getElementById('table-body');
+    const limitData = allData.slice(0, limitCount);
+    document.getElementById('count').textContent = limitData.length.toLocaleString();
+    tbody.innerHTML = '';
+
+    limitData.forEach(item => {
+        const fullAddress = `${item.sido} ${item.sigungu} ${item.address}`.trim();
+        const kakaoMapUrl = `https://map.kakao.com/link/search/${encodeURIComponent(fullAddress)}`;
+        const classAttr = pcodeCounts[item.pcode] > 1 ? 'class="duplicate-row"' : '';
+        const isGJ = item.agency.includes('광장대리점');
+        const isPSM = item.agency.toUpperCase().includes('PS&M') || item.agency.includes('피에스앤마케팅');
+        let agencyBadgeClass = `badge ${isGJ ? 'badge-gj-agency' : isPSM ? 'badge-psm-agency' : 'badge-type'}`;
+        let distanceTxt = item.distance < 900 ? (item.distance < 1 ? `<span class="distance-tag">📍 ${(item.distance * 1000).toFixed(0)} m</span>` : `<span class="distance-tag">📍 ${item.distance.toFixed(2)} km</span>`) : '';
+
+        tbody.innerHTML += `<tr id="row-${item.pcode}" ${classAttr}><td><b>${item.pcode}</b></td><td><b>${item.name}</b></td><td>${item.dong}</td><td class="text-left"><a href="${kakaoMapUrl}" target="_blank" class="map-link">📍 ${item.address}</a>${distanceTxt}</td><td><span class="${agencyBadgeClass}">${item.agency}</span></td><td><span class="badge badge-type">${item.type}</span></td><td><span class="badge badge-score">${item.ratio.toFixed(1)}%</span></td><td><span class="badge badge-total">${item.score.toLocaleString()}</span></td></tr>`;
+    });
+}
+
+window.onload = function() {
+    if (!isServerOpen) return;
+    initMap();
+    getUserLocation(false);
+
+    const targetFileUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/')) + '/전거래처_PS중복.csv';
+    fetch(targetFileUrl)
+    .then(res => res.blob())
+    .then(blob => { parseCSVFile(blob); })
+    .catch(() => { document.getElementById('status-msg').innerHTML = `⚠️ 서버 데이터 로드 실패`; });
 };
 
-function getUserLocation(isAuto = false) {
-    const msgEl = document.getElementById('gps-msg');
+function getUserLocation(isManual = false) {
     if (navigator.geolocation) {
-        msgEl.textContent = "🛰️ 모바일 고정밀 GPS 신호 수신 중...";
-        
-        const gpsOptions = {
-            enableHighAccuracy: true, 
-            timeout: 10000,           
-            maximumAge: 0             
-        };
-
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                userCoords = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                };
-                msgEl.textContent = `✅ GPS 수신 완료 (오차 발생 시 지도를 움직이거나 검색하세요)`;
-                
-                if(map) {
-                    const newPos = new kakao.maps.LatLng(userCoords.lat, userCoords.lng);
-                    map.setCenter(newPos);
-                    centerMarker.setPosition(newPos);
-                }
-
-                if(csvData.length > 0) {
-                    convertAddressesAndRender();
-                }
-            },
-            function(error) {
-                msgEl.textContent = "❌ GPS 수신 실패 (상단 검색창을 이용하여 수동으로 기준치를 잡으세요)";
-                if(csvData.length > 0) {
-                    convertAddressesAndRender();
-                }
-            },
-            gpsOptions
-        );
-    } else {
-        msgEl.textContent = "⚠️ 모바일 브라우저가 GPS 기능을 지원하지 않습니다.";
+        navigator.geolocation.getCurrentPosition(function(position) {
+            userCoords = { lat: position.coords.latitude, lng: position.coords.longitude };
+            document.getElementById('gps-msg').textContent = `✅ GPS 수신 완료`;
+            if(map) {
+                const newPos = new kakao.maps.LatLng(userCoords.lat, userCoords.lng);
+                map.setCenter(newPos);
+                centerMarker.setPosition(newPos);
+            }
+            if(csvData.length > 0) {
+                if (isManual) searchMode = 'map'; 
+                recalculateDistancesAndFetchCoordinates();
+            }
+        });
     }
 }
 
@@ -346,79 +345,18 @@ function getDistanceHaversine(lat1, lng1, lat2, lng2) {
     const r = 6371; 
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return r * c;
-}
-
-function convertAddressesAndRender() {
-    if (!geocoder) {
-        applyFilters(); 
-        return;
-    }
-
-    let promises = csvData.map(item => {
-        return new Promise((resolve) => {
-            const fullAddr = `${item.sido} ${item.sigungu} ${item.address}`.trim();
-            geocoder.addressSearch(fullAddr, function(result, status) {
-                if (status === kakao.maps.services.Status.OK) {
-                    item.lat = parseFloat(result[0].y); 
-                    item.lng = parseFloat(result[0].x); 
-                    item.distance = getDistanceHaversine(userCoords.lat, userCoords.lng, item.lat, item.lng);
-                } else {
-                    item.distance = 9999; 
-                }
-                resolve();
-            });
-        });
-    });
-
-    Promise.all(promises).then(() => {
-        applyFilters();
-    });
-}
-
-function recalculateDistances() {
-    csvData.forEach(item => {
-        if (item.lat && item.lng) {
-            item.distance = getDistanceHaversine(userCoords.lat, userCoords.lng, item.lat, item.lng);
-        } else {
-            item.distance = 9999;
-        }
-    });
-}
-
-function handleFileSelect(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    document.getElementById('target-file-name').textContent = `${file.name} (사용자 첨부 파일)`;
-    document.getElementById('table-body').innerHTML = `<tr><td id="status-msg" colspan="8" style="padding:30px; color:#16a34a; font-weight:bold;">📂 데이터를 추출하고 복원하는 중...</td></tr>`;
-    
-    parseCSVFile(file);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return r * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
 function parseCSVFile(fileOrBlob) {
     Papa.parse(fileOrBlob, {
-        header: false,
-        skipEmptyLines: true,
-        encoding: "UTF-8", 
+        header: false, skipEmptyLines: true, encoding: "UTF-8", 
         complete: function(results) {
             let rows = results.data;
-            if(!rows || rows.length === 0) return;
-            
-            const sampleText = rows.slice(0, 5).map(r => r.join('')).join('');
-            if (sampleText.includes('') || sampleText.includes('거래처명') === false && sampleText.match(/[ㄱ-ㅎㅏ-ㅣ가-힣]/) === null) {
-                Papa.parse(fileOrBlob, {
-                    header: false,
-                    skipEmptyLines: true,
-                    encoding: "EUC-KR",
-                    complete: function(eucResults) {
-                        processRows(eucResults.data);
-                    }
-                });
+            const sample = rows.slice(0, 5).map(r => r.join('')).join('');
+            if (sample.includes('거래처명') === false && sample.match(/[ㄱ-ㅎㅏ-ㅣ가-힣]/) === null) {
+                Papa.parse(fileOrBlob, { header: false, skipEmptyLines: true, encoding: "EUC-KR", complete: function(euc) { processRows(euc.data); } });
             } else {
                 processRows(rows);
             }
@@ -427,91 +365,50 @@ function parseCSVFile(fileOrBlob) {
 }
 
 function processRows(rows) {
-    if(!rows || rows.length <= 1) {
-        document.getElementById('status-msg').innerHTML = `⚠️ 엑셀 파일 내에 유효한 데이터가 존재하지 않습니다.`;
-        return;
-    }
-
     const headerRow = rows[0].map(h => h ? h.toString().trim().replace(/\s+/g, '') : '');
-    const idxPcode = 1; 
-    
-    const idxName = headerRow.findIndex((h, i) => i > 0 && (h.includes('거래처명') || h.includes('거래처'))) !== -1 ? headerRow.findIndex((h, i) => i > 0 && (h.includes('거래처명') || h.includes('거래처'))) : 2;
-    const idxSido = headerRow.findIndex(h => h.includes('시도')) !== -1 ? headerRow.findIndex(h => h.includes('시도')) : 3;
-    const idxSigungu = headerRow.findIndex(h => h.includes('시군구')) !== -1 ? headerRow.findIndex(h => h.includes('시군구')) : 4;
-    const idxDong = headerRow.findIndex(h => h.includes('읍면동')) !== -1 ? headerRow.findIndex(h => h.includes('읍면동')) : 5;
-    const idxAddress = headerRow.findIndex(h => h.includes('주소') || h.includes('상세주소')) !== -1 ? headerRow.findIndex(h => h.includes('주소') || h.includes('상세주소')) : 6;
-    const idxType = headerRow.findIndex(h => h.includes('중복여부') || h.includes('중복')) !== -1 ? headerRow.findIndex(h => h.includes('중복여부') || h.includes('중복')) : 8;
-    
-    const idxTotalScore = headerRow.findIndex(h => h.includes('P코드합계') || h.includes('합계')) !== -1 ? headerRow.findIndex(h => h.includes('P코드합계') || h.includes('합계')) : 10;
-    const idxScore = headerRow.findIndex(h => h.includes('대리점실적') || h.includes('실적')) !== -1 ? headerRow.findIndex(h => h.includes('대리점실적') || h.includes('실적')) : 9;
+    pcodeCounts = {};
 
-    let idxAgency = headerRow.findIndex((h, i) => i > 0 && (h === '대리점명' || h === '대리점'));
-    if(idxAgency === -1) { 
-        idxAgency = headerRow.findIndex((h, i) => i > 0 && h.includes('대리점') && !h.includes('코드') && !h.includes('실적'));
-    }
-    if(idxAgency === -1) idxAgency = 7; 
-
-    const dataRows = rows.slice(1);
-    pcodeCounts = {}; 
-
-    csvData = dataRows.map(row => {
-        if (!row || row.length < 2 || !row[idxPcode]) return null;
-
-        const parseNum = (val) => {
-            if(!val) return 0;
-            const clean = val.toString().replace(/,/g, '').trim();
-            return parseInt(clean) || 0;
-        };
-
-        const currentScore = parseNum(row[idxScore]);
-        const currentTotalScore = parseNum(row[idxTotalScore]);
-        const pcodeVal = row[idxPcode].toString().trim();
-
+    csvData = rows.slice(1).map(row => {
+        if (!row || row.length < 2 || !row[1]) return null;
+        const pcodeVal = row[1].toString().trim();
         pcodeCounts[pcodeVal] = (pcodeCounts[pcodeVal] || 0) + 1;
-
-        let computedRatio = 0;
-        if (currentTotalScore > 0) {
-            computedRatio = (currentScore / currentTotalScore) * 100;
-        }
+        
+        const score = parseInt(row[9]?.toString().replace(/,/g, '')) || 0;
+        const total = parseInt(row[10]?.toString().replace(/,/g, '')) || 0;
 
         return {
-            pcode: pcodeVal, 
-            name: row[idxName] ? row[idxName].toString().trim() : '',
-            sido: row[idxSido] ? row[idxSido].toString().trim() : '',
-            sigungu: row[idxSigungu] ? row[idxSigungu].toString().trim() : '',
-            dong: row[idxDong] ? row[idxDong].toString().trim() : '',
-            address: row[idxAddress] ? row[idxAddress].toString().trim() : '공백',
-            agency: row[idxAgency] ? row[idxAgency].toString().trim() : '',
-            type: row[idxType] ? row[idxType].toString().trim() : '정보없음',
-            score: currentScore,        
-            ratio: computedRatio,
-            lat: 0,
-            lng: 0,
-            distance: 9999
+            pcode: pcodeVal, name: row[2] || '', sido: row[3] || '', sigungu: row[4] || '', dong: row[5] || '', address: row[6] || '', agency: row[7] || '', type: row[8] || '정보없음',
+            score: score, ratio: total > 0 ? (score / total) * 100 : 0, lat: 0, lng: 0, distance: 999
         };
     }).filter(Boolean);
 
-    if(csvData.length === 0) {
-        document.getElementById('status-msg').innerHTML = `⚠️ 정상 데이터 매칭에 실패했습니다. 파일 형식을 확인해주세요.`;
-        return;
-    }
-
-    convertAddressesAndRender();
-    resetAllFilters();
-    initFilters();
+    updateDropdownOptions(); // 🎯 초기 필터 세팅도 동적 연동 함수 사용
+    searchMode = 'filter';
+    recalculateDistancesAndFetchCoordinates();
 }
 
-function initFilters() {
-    buildDropdown('sido', csvData);
-    buildDropdown('sigungu', csvData);
-    buildDropdown('dong', csvData);
-    buildDropdown('type', csvData);
+// 🎯 하위 필터 동적 연동(Cascading) 로직
+function updateDropdownOptions() {
+    let availableData = csvData;
+
+    // 1. 시도 렌더링 (시도는 전체 유지)
+    buildDropdown('sido', availableData);
+
+    // 2. 시군구 렌더링 (선택된 시도에 맞게 필터링)
+    if (filters.sido) availableData = availableData.filter(item => item.sido.includes(filters.sido));
+    buildDropdown('sigungu', availableData);
+
+    // 3. 읍면동 렌더링 (선택된 시군구에 맞게 필터링)
+    if (filters.sigungu) availableData = availableData.filter(item => item.sigungu.includes(filters.sigungu));
+    buildDropdown('dong', availableData);
+
+    // 4. 타입 렌더링
+    buildDropdown('type', csvData); // 타입은 고정이면 전체 데이터 기준, 종속시키려면 availableData로 변경 가능
 }
 
 function buildDropdown(key, data) {
     const listEl = document.getElementById(`${key}-list`);
     const uniqueValues = [...new Set(data.map(item => item[key]))].filter(Boolean).sort();
-    
     listEl.innerHTML = `<li onclick="selectValue('${key}', '')">-- 전체 --</li>`;
     uniqueValues.forEach(val => {
         const li = document.createElement('li');
@@ -530,127 +427,50 @@ function selectValue(key, val) {
     filters[key] = val;
     document.getElementById(`search-${key}`).value = val;
     document.getElementById(`${key}-list`).style.display = 'none';
-    applyFilters(key);
+
+    // 🎯 상위 필터를 바꿀 때 하위 필터가 남아있지 않도록 초기화
+    if (key === 'sido') {
+        filters.sigungu = ""; document.getElementById('search-sigungu').value = "";
+        filters.dong = ""; document.getElementById('search-dong').value = "";
+    } else if (key === 'sigungu') {
+        filters.dong = ""; document.getElementById('search-dong').value = "";
+    }
+
+    updateDropdownOptions(); // 하위 드롭다운 재구성
+    applyFilters();
 }
 
 function filterDropdown(key) {
     const input = document.getElementById(`search-${key}`).value.toLowerCase();
-    const items = document.querySelectorAll(`#${key}-list li`);
     if(input === "") filters[key] = "";
-    items.forEach((li, index) => {
-        if(index === 0) return;
-        const text = li.textContent.toLowerCase();
-        li.style.display = text.includes(input) ? 'block' : 'none';
+    document.querySelectorAll(`#${key}-list li`).forEach((li, idx) => {
+        if(idx !== 0) li.style.display = li.textContent.toLowerCase().includes(input) ? 'block' : 'none';
     });
-    applyFilters(key);
+    
+    // 텍스트를 직접 지운 경우에도 연동 처리를 위해 적용
+    if(input === "") {
+        if (key === 'sido') { filters.sigungu = ""; document.getElementById('search-sigungu').value = ""; filters.dong = ""; document.getElementById('search-dong').value = ""; }
+        else if (key === 'sigungu') { filters.dong = ""; document.getElementById('search-dong').value = ""; }
+        updateDropdownOptions();
+    }
+    applyFilters();
 }
 
-function applyFilters(changedKey) {
-    const filteredData = csvData.filter(item => {
-        return (!filters.sido || item.sido.includes(filters.sido)) &&
-               (!filters.sigungu || item.sigungu.includes(filters.sigungu)) &&
-               (!filters.dong || item.dong.includes(filters.dong)) &&
-               (!filters.type || item.type.includes(filters.type));
-    });
-
-    const keys = ['sido', 'sigungu', 'dong', 'type'];
-    keys.forEach(k => {
-        if (k !== changedKey && !filters[k]) {
-            buildDropdown(k, filteredData);
-        }
-    });
-    renderTable(filteredData);
-}
-
-function renderTable(data) {
-    const tbody = document.getElementById('table-body');
-    document.getElementById('count').textContent = data.length.toLocaleString();
-    tbody.innerHTML = '';
-
-    if (data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="color:#ef4444; padding:30px; font-weight:bold;">일치하는 조건의 데이터가 존재하지 않습니다.</td></tr>`;
-        return;
-    }
-
-    data.sort((a, b) => a.distance - b.distance);
-
-    const limitData = data.slice(0, 100); 
-    limitData.forEach(item => {
-        const fullAddress = `${item.sido} ${item.sigungu} ${item.address}`.trim();
-        const kakaoMapUrl = `https://map.kakao.com/link/search/${encodeURIComponent(fullAddress)}`;
-        const formattedRatio = item.ratio.toFixed(1) + '%';
-
-        const isDuplicateRow = pcodeCounts[item.pcode] > 1 ? 'class="duplicate-row"' : '';
-        const typeBadgeClass = item.type === 'PS_전속' ? 'badge badge-ps-exclusive' : 'badge badge-type';
-        const agencyBadgeClass = item.agency === '광장대리점' ? 'badge badge-pro-agency' : '';
-
-        let distanceTxt = "";
-        if(item.distance < 9000) {
-            if(item.distance < 1) {
-                distanceTxt = `<span class="distance-tag">📍 ${(item.distance * 1000).toFixed(0)} m</span>`;
-            } else {
-                distanceTxt = `<span class="distance-tag">📍 ${item.distance.toFixed(2)} km</span>`;
-            }
-        }
-
-        tbody.innerHTML += `
-            <tr ${isDuplicateRow}>
-                <td><b>${item.pcode}</b></td>
-                <td title="${item.name}"><b>${item.name}</b></td>
-                <td>${item.dong}</td>
-                <td class="text-left">
-                    <a href="${kakaoMapUrl}" target="_blank" class="map-link" title="카카오맵에서 위치 보기">
-                        📍 ${item.address}
-                    </a>
-                    ${distanceTxt}
-                </td>
-                <td title="${item.agency}"><span class="${agencyBadgeClass}">${item.agency}</span></td>
-                <td><span class="${typeBadgeClass}">${item.type}</span></td>
-                <td><span class="badge badge-score">${formattedRatio}</span></td>
-                <td><span class="badge badge-total">${item.score.toLocaleString()}</span></td>
-            </tr>
-        `;
-    });
-
-    if (data.length > 100) {
-        tbody.innerHTML += `<tr><td colspan="8" style="padding:15px; background:#f3f4f6; color:#4b5563; font-weight:bold;">⚠️ 데이터가 너무 많아 상위 100개만 화면에 표시 중입니다. 필터를 이용해 범위를 좁혀주세요.</td></tr>`;
-    }
+function applyFilters() {
+    searchMode = 'filter';
+    recalculateDistancesAndFetchCoordinates();
 }
 
 function resetAllFilters() {
     filters = { sido: "", sigungu: "", dong: "", type: "" };
-    document.getElementById('search-sido').value = "";
-    document.getElementById('search-sigungu').value = "";
-    document.getElementById('search-dong').value = "";
-    document.getElementById('search-type').value = "";
-    if(csvData.length > 0) applyFilters();
+    ['sido', 'sigungu', 'dong', 'type'].forEach(k => document.getElementById(`search-${k}`).value = "");
+    updateDropdownOptions(); // 드롭다운 원상복구
+    searchMode = 'filter';
+    recalculateDistancesAndFetchCoordinates();
 }
 
 document.addEventListener('click', function(e) {
-    if (!e.target.closest('.filter-group')) {
-        document.querySelectorAll('.dropdown-list').forEach(el => el.style.display = 'none');
-    }
-});
-
-/*********************************************************************
- * 🔒 [보안 강화] PC 마우스 우클릭, 드래그 블록, 소스보기 단축키 원천 차단
- *********************************************************************/
-document.addEventListener('contextmenu', function(e) {
-    e.preventDefault(); 
-}, false);
-
-document.addEventListener('selectstart', function(e) {
-    e.preventDefault(); 
-}, false);
-
-document.addEventListener('keydown', function(e) {
-    if (e.keyCode === 123 || 
-        (e.ctrlKey && e.shiftKey && e.keyCode === 73) || 
-        (e.ctrlKey && e.keyCode === 85) || 
-        (e.ctrlKey && e.keyCode === 67)) {
-        e.preventDefault();
-        return false;
-    }
+    if (!e.target.closest('.filter-group')) document.querySelectorAll('.dropdown-list').forEach(el => el.style.display = 'none');
 });
 </script>
 </body>
