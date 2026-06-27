@@ -168,7 +168,7 @@
         <div class="location-search-box">
             <input type="text" id="map-search-keyword" class="location-search-input" placeholder="이동할 기준 장소나 주소를 입력하세요 (예: 중곡역, 목동역)" onkeydown="if(event.keyCode === 13) searchNewLocation();">
             <button class="btn-location-search" onclick="searchNewLocation()">위치 이동</button>
-            <button class="btn-gps" onclick="getUserLocation()">📍 현재 GPS 재수신</button>
+            <button class="btn-gps" onclick="getUserLocation(true)">📍 현재 GPS 재수신</button>
             <span id="gps-msg" class="top-gps-msg">위치 신호를 탐색하고 있습니다...</span>
         </div>
         
@@ -212,7 +212,7 @@ let storeCustomOverlays = [];
 let currentOpenedInfoWindow = null; 
 let dragTimeout = null;
 
-/* 🎯 [추가] 검색 수단 구분을 위한 상태 변수 ('filter' 또는 'map') */
+// 🎯 [핵심 추가] 현재 데이터 탐색 모드 (필터 조작이면 'filter', 지도 조작이면 'map')
 let searchMode = 'filter';
 
 function checkAdminAccess() {
@@ -242,7 +242,7 @@ function initMap() {
     kakao.maps.event.addListener(map, 'dragend', function() {
         if(dragTimeout) clearTimeout(dragTimeout);
         dragTimeout = setTimeout(function() {
-            /* 🎯 지도를 조작하여 이벤트를 일으켰으므로 모드를 'map'으로 변경 */
+            // 🎯 지도를 드래그했으므로 'map' 모드로 변경
             searchMode = 'map';
             updateCenterCoordinates(map.getCenter(), `🎯 지도 중심점 기준으로 거리 보정됨`);
         }, 300);
@@ -263,7 +263,7 @@ function searchNewLocation() {
     const keyword = document.getElementById('map-search-keyword').value.trim();
     if (!keyword) return;
 
-    /* 🎯 지도 장소 검색이 일어났으므로 모드를 'map'으로 변경 */
+    // 🎯 지도에서 위치를 검색했으므로 'map' 모드로 변경
     searchMode = 'map';
 
     placesService.keywordSearch(keyword, function(data, status) {
@@ -283,7 +283,7 @@ function searchNewLocation() {
     });
 }
 
-// 🎯 순차 큐(Queue) 변환 로직 및 동적 제한 적용
+// 🎯 좌표 및 거리 계산 중심 로직
 async function recalculateDistancesAndFetchCoordinates() {
     const filteredData = csvData.filter(item => {
         return (!filters.sido || item.sido.includes(filters.sido)) &&
@@ -292,7 +292,7 @@ async function recalculateDistancesAndFetchCoordinates() {
                (!filters.type || item.type.includes(filters.type));
     });
 
-    // 1차 기본 거리 연산 기틀 마련
+    // 기본 거리순 정렬 기틀
     filteredData.forEach(item => {
         if (item.lat && item.lng) {
             item.distance = getDistanceHaversine(userCoords.lat, userCoords.lng, item.lat, item.lng);
@@ -300,19 +300,18 @@ async function recalculateDistancesAndFetchCoordinates() {
             item.distance = 999; 
         }
     });
-
-    // 기본 거리순 정렬
     filteredData.sort((a, b) => a.distance - b.distance);
-    
-    /* 🎯 [개선] 지도는 항상 필터/목록의 가장 가까운 순 20개만 정밀 매핑하므로 20개만 추출 */
-    const targetStores = filteredData.slice(0, 20);
+
+    // 🎯 [핵심 로직] 모드에 따라 목록과 지도 렌더링 개수를 80개 / 20개로 분기
+    const limitCount = searchMode === 'filter' ? 80 : 20;
+    const targetStores = filteredData.slice(0, limitCount);
 
     if(targetStores.length === 0) {
-        renderTableAndMarkers(filteredData, []);
+        renderTableAndMarkers(filteredData, [], limitCount);
         return;
     }
 
-    // 최대 20건만 직렬 비동기 주소 변환 처리를 하므로 속도가 획기적으로 개선되고 카카오 API 한도를 아낍니다.
+    // 조건에 맞는 데이터만 카카오 API 호출로 정밀 좌표 변환 (직렬 비동기)
     for (let item of targetStores) {
         const fullAddr = `${item.sido} ${item.sigungu} ${item.address}`.trim();
         await new Promise((resolve) => {
@@ -327,21 +326,21 @@ async function recalculateDistancesAndFetchCoordinates() {
         });
     }
 
-    // 정밀 변환 좌표 기준 재정렬
+    // 좌표가 잡힌 후 재정렬
     filteredData.sort((a, b) => a.distance - b.distance);
     
-    /* 🎯 정밀 좌표 갱신 완료 후 최적의 상위 20개를 마커 대상으로 전달 */
-    const finalMarkers = filteredData.slice(0, 20);
-    renderTableAndMarkers(filteredData, finalMarkers);
+    // 마커 데이터도 동일한 개수로 전달
+    const finalMarkers = filteredData.slice(0, limitCount);
+    renderTableAndMarkers(filteredData, finalMarkers, limitCount);
 }
 
-function renderTableAndMarkers(allData, markerData) {
-    // 1. 기존 마커 및 인포윈도우 완전 청소
+// 🎯 테이블 및 마커 렌더링 담당
+function renderTableAndMarkers(allData, markerData, limitCount) {
     storeCustomOverlays.forEach(overlay => overlay.setMap(null));
     storeCustomOverlays = [];
     if (currentOpenedInfoWindow) currentOpenedInfoWindow.close();
 
-    // 2. 새로운 동기화 마커 시각화 표시 (markerData는 항상 필터/거리 내 상위 20개)
+    // 1. 지도 마커 표시 (markerData는 limitCount 만큼 잘려있음)
     markerData.forEach(store => {
         if (!store.lat || !store.lng) return;
 
@@ -379,11 +378,8 @@ function renderTableAndMarkers(allData, markerData) {
         });
     });
 
-    // 3. 하단 데이터 테이블 생성
+    // 2. 하단 데이터 테이블 표시 (limitCount 적용)
     const tbody = document.getElementById('table-body');
-    
-    /* 🎯 [핵심] 검색 수단(모드) 상태에 따라 하단 리스트의 최대 노출 개수 차등 정의 */
-    const limitCount = searchMode === 'filter' ? 80 : 20;
     const limitData = allData.slice(0, limitCount);
     
     document.getElementById('count').textContent = limitData.length.toLocaleString();
@@ -417,7 +413,7 @@ function renderTableAndMarkers(allData, markerData) {
 window.onload = function() {
     if (!isServerOpen) return;
     initMap();
-    getUserLocation();
+    getUserLocation(false);
 
     const targetFileUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/')) + '/전거래처_PS중복.csv';
     fetch(targetFileUrl)
@@ -426,7 +422,8 @@ window.onload = function() {
     .catch(() => { document.getElementById('status-msg').innerHTML = `⚠️ 서버 데이터 로드 실패`; });
 };
 
-function getUserLocation() {
+// 🎯 isManual 여부로 초기 로드 시점과 수동 조작을 구분
+function getUserLocation(isManual = false) {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(position) {
             userCoords = { lat: position.coords.latitude, lng: position.coords.longitude };
@@ -437,8 +434,8 @@ function getUserLocation() {
                 centerMarker.setPosition(newPos);
             }
             if(csvData.length > 0) {
-                /* 🎯 현재 GPS 위치 기준의 이동이므로 모드를 'map'으로 설정 */
-                searchMode = 'map';
+                // 사용자가 직접 클릭한 경우만 모드를 'map'으로 설정
+                if (isManual) searchMode = 'map'; 
                 recalculateDistancesAndFetchCoordinates();
             }
         });
@@ -488,7 +485,7 @@ function processRows(rows) {
 
     initFilters();
     
-    /* 🎯 데이터 최초 로드 시에는 기본 필터 모드 검색으로 처리 */
+    // 데이터 최초 로드 시 기준점 (필터와 동일 취급 = 80개 출력)
     searchMode = 'filter';
     recalculateDistancesAndFetchCoordinates();
 }
@@ -531,7 +528,7 @@ function filterDropdown(key) {
 }
 
 function applyFilters() {
-    /* 🎯 필터 입력 박스나 드롭다운 조작 시 모드를 'filter'로 선언 */
+    // 🎯 필터 조작 시 'filter' 모드
     searchMode = 'filter';
     recalculateDistancesAndFetchCoordinates();
 }
@@ -540,7 +537,7 @@ function resetAllFilters() {
     filters = { sido: "", sigungu: "", dong: "", type: "" };
     ['sido', 'sigungu', 'dong', 'type'].forEach(k => document.getElementById(`search-${k}`).value = "");
     
-    /* 🎯 초기화 시에도 필터 검색 기준이므로 모드를 'filter'로 설정 */
+    // 🎯 필터 초기화 시 'filter' 모드
     searchMode = 'filter';
     recalculateDistancesAndFetchCoordinates();
 }
