@@ -71,43 +71,49 @@
         #map { width: 100%; height: 420px; border-radius: 6px; border: 1px solid #d1d5db; }
 
         /*********************************************************************
-         * 🎯 [스타일 수정] 요청하신 이미지 형태의 말풍선 레이아웃 구현
+         * 🎯 [스타일 업데이트] 이미지 요청 사항 맞춤 라운드 팝업 레이아웃
          *********************************************************************/
-        .popup-wrap {
+        .custom-iw-container {
             background: #ffffff;
-            border: 2px solid #0f172a;
-            border-radius: 4px;
-            padding: 8px 12px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            border: 2px solid #1e293b;
+            border-radius: 20px;
+            padding: 15px 18px;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+            min-width: 260px;
+            max-width: 320px;
+            max-height: 350px;
+            overflow-y: auto;
+        }
+        .popup-store-block {
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px dashed #cbd5e1;
+        }
+        .popup-store-block:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
         }
         .popup-info-table {
             border-collapse: collapse;
             font-size: 13px;
             font-family: 'Malgun Gothic', sans-serif;
-            min-width: 220px;
-            background: #ffffff;
             width: 100%;
         }
-        .popup-info-table tr {
-            border-bottom: 1px solid #e2e8f0;
-        }
-        .popup-info-table tr:last-child {
-            border-bottom: none;
-        }
         .popup-info-table th {
-            color: #1e293b;
+            color: #475569;
             font-weight: bold;
-            padding: 5px 0;
+            padding: 4px 0;
             text-align: left;
             width: 85px;
-            font-size: 13px;
+            vertical-align: top;
         }
         .popup-info-table td {
-            padding: 5px 0 5px 10px;
-            color: #334155;
+            padding: 4px 0 4px 8px;
+            color: #0f172a;
             text-align: left;
             font-weight: 500;
-            font-size: 13px;
+            word-break: break-all;
         }
 
         /* 🎨 미니멀 커스텀 지도 마커 디자인 */
@@ -186,9 +192,8 @@
         .info-status { font-size: 13px; font-weight: bold; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
         .total-count { color: #2563eb; }
 
-        /* 카카오맵 InfoWindow 기본 패딩 스타일 무력화 */
-        .gm-style-iw-d, .gm-style-iw-c { padding: 0 !important; }
-        .kakao-iw-container { padding: 5px; background: #fff; }
+        /* 카카오맵 내장 오버레이 패딩 초기화 */
+        .kakaomap-iw-wrapper { padding: 0; margin: -5px -10px; background: transparent; }
 
         @media (max-width: 768px) {
             body { padding: 8px; }
@@ -418,7 +423,7 @@ function searchNewLocation() {
 }
 
 /*********************************************************************
- * 🎯 [오류 전면 수정] InfoWindow 포지션 바인딩 및 스크린샷 UI 맞춤 구현
+ * 🎯 [기능 구현] 주소/좌표가 같을 때 다중 표기 및 실적 합산 알고리즘
  *********************************************************************/
 function displayStoreMarkersOnMap(data) {
     storeCustomOverlays.forEach(overlay => overlay.setMap(null));
@@ -430,18 +435,59 @@ function displayStoreMarkersOnMap(data) {
 
     if (!map || data.length === 0) return;
 
-    const validStores = data.filter(item => item.lat > 0 && item.lng > 0).slice(0, 80);
+    const validStores = data.filter(item => item.lat > 0 && item.lng > 0);
 
+    // 1단계: 위경도 좌표(소수점 5자리 제한) 기준으로 데이터 그룹화
+    const locationGroups = {};
     validStores.forEach(store => {
-        const markerPosition = new kakao.maps.LatLng(store.lat, store.lng);
-        
-        const isGJ = store.agency.includes('광장대리점');
-        const isPSM = store.agency.toUpperCase().includes('PS&M') || store.agency.includes('피에스앤마케팅');
+        const coordKey = `${store.lat.toFixed(5)}_${store.lng.toFixed(5)}`;
+        if (!locationGroups[coordKey]) {
+            locationGroups[coordKey] = {
+                lat: store.lat,
+                lng: store.lng,
+                stores: []
+            };
+        }
+        locationGroups[coordKey].stores.push(store);
+    });
+
+    // 화면 과부하 방지 상위 80개 좌표 그룹 추출
+    const groupKeys = Object.keys(locationGroups).slice(0, 80);
+
+    groupKeys.forEach(key => {
+        const group = locationGroups[key];
+        const markerPosition = new kakao.maps.LatLng(group.lat, group.lng);
+
+        // 2단계: 동일한 좌표 내부에서 [거래처명] 기준으로 2차 병합 및 대리점 실적 합산
+        const mergedStoreMap = {};
+        group.stores.forEach(s => {
+            const nameKey = s.name.trim();
+            if (!mergedStoreMap[nameKey]) {
+                mergedStoreMap[nameKey] = {
+                    name: nameKey,
+                    agencies: [],
+                    types: [],
+                    totalScore: 0
+                };
+            }
+            if (s.agency && !mergedStoreMap[nameKey].agencies.includes(s.agency)) {
+                mergedStoreMap[nameKey].agencies.push(s.agency);
+            }
+            if (s.type && !mergedStoreMap[nameKey].types.includes(s.type)) {
+                mergedStoreMap[nameKey].types.push(s.type);
+            }
+            mergedStoreMap[nameKey].totalScore += s.score; // 대리점 실적 합계 계산
+        });
+
+        // 대표 핀 클래스 결정 (첫 번째 상점 기준)
+        const leadStore = group.stores[0];
+        const isGJ = leadStore.agency.includes('광장대리점');
+        const isPSM = leadStore.agency.toUpperCase().includes('PS&M') || leadStore.agency.includes('피에스앤마케팅');
         
         let pinClass = "pin-normal";
-        if (isGJ) { pinClass = "pin-gj"; } 
-        else if (isPSM && store.type === 'PS_전속') { pinClass = "pin-psm-exclusive"; } 
-        else if (isPSM && store.type === '중복점') { pinClass = "pin-psm-duplicate"; }
+        if (isGJ) pinClass = "pin-gj";
+        else if (isPSM && leadStore.type === 'PS_전속') pinClass = "pin-psm-exclusive";
+        else if (isPSM && leadStore.type === '중복점') pinClass = "pin-psm-duplicate";
 
         const contentEl = document.createElement('div');
         contentEl.className = `custom-pin-marker ${pinClass}`;
@@ -456,27 +502,38 @@ function displayStoreMarkersOnMap(data) {
         customOverlay.setMap(map);
         storeCustomOverlays.push(customOverlay);
 
-        // 스크린샷과 1:1 매칭되는 내부 콘텐츠 템플릿 생성
+        // 3단계: 요청한 스크린샷 양식의 둥근 말풍선 HTML 바인딩 구조화 생성
+        let innerHTMLBlocks = '';
+        Object.values(mergedStoreMap).forEach(merged => {
+            innerHTMLBlocks += `
+                <div class="popup-store-block">
+                    <table class="popup-info-table">
+                        <tr>
+                            <th>거래처명</th>
+                            <td><b>${merged.name}</b></td>
+                        </tr>
+                        <tr>
+                            <th>대리점명</th>
+                            <td>${merged.agencies.join(', ') || '정보없음'}</td>
+                        </tr>
+                        <tr>
+                            <th>중복여부</th>
+                            <td>${merged.types.join(', ')}</td>
+                        </tr>
+                        <tr>
+                            <th>대리점실적</th>
+                            <td><b>${merged.totalScore.toLocaleString()}건</b></td>
+                        </tr>
+                    </table>
+                </div>
+            `;
+        });
+
         const iwContent = `
-            <div class="popup-wrap">
-                <table class="popup-info-table">
-                    <tr>
-                        <th>거래처명</th>
-                        <td>${store.name || '정보없음'}</td>
-                    </tr>
-                    <tr>
-                        <th>대리점명</th>
-                        <td>${store.agency || '정보없음'}</td>
-                    </tr>
-                    <tr>
-                        <th>중복여부</th>
-                        <td>${store.type || '정보없음'}</td>
-                    </tr>
-                    <tr>
-                        <th>대리점실적</th>
-                        <td>${store.score ? store.score.toLocaleString() + '건' : '0건'}</td>
-                    </tr>
-                </table>
+            <div class="kakaomap-iw-wrapper">
+                <div class="custom-iw-container">
+                    ${innerHTMLBlocks}
+                </div>
             </div>
         `;
 
@@ -486,7 +543,6 @@ function displayStoreMarkersOnMap(data) {
             disableAutoPan: false
         });
 
-        // 클릭 이벤트를 커스텀 오버레이의 엘리먼트에 바인딩하고 좌표 직접 할당 방식으로 오픈
         contentEl.addEventListener('click', function() {
             if (currentOpenedInfoWindow) currentOpenedInfoWindow.close();
             infowindow.setPosition(markerPosition);
