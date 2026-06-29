@@ -71,22 +71,23 @@
         #map { width: 100%; height: 420px; border-radius: 6px; border: 1px solid #d1d5db; }
 
         /*********************************************************************
-         * 🎯 [스타일 업데이트] 이미지 요청 사항 맞춤 라운드 팝업 레이아웃
+         * 🎯 말풍선 컨테이너 기본 스타일 (PC 기준)
          *********************************************************************/
         .custom-iw-container {
             background: #ffffff;
             border: 2px solid #1e293b;
-            border-radius: 20px;
-            padding: 15px 18px;
+            border-radius: 14px;
+            padding: 12px 14px;
             box-shadow: 0 6px 16px rgba(0,0,0,0.15);
-            min-width: 260px;
-            max-width: 320px;
-            max-height: 350px;
+            min-width: 250px;
+            max-width: 290px;
+            max-height: 280px;
             overflow-y: auto;
+            box-sizing: border-box;
         }
         .popup-store-block {
-            margin-bottom: 12px;
-            padding-bottom: 12px;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
             border-bottom: 1px dashed #cbd5e1;
         }
         .popup-store-block:last-child {
@@ -103,13 +104,13 @@
         .popup-info-table th {
             color: #475569;
             font-weight: bold;
-            padding: 4px 0;
+            padding: 3px 0;
             text-align: left;
-            width: 85px;
+            width: 75px;
             vertical-align: top;
         }
         .popup-info-table td {
-            padding: 4px 0 4px 8px;
+            padding: 3px 0 3px 6px;
             color: #0f172a;
             text-align: left;
             font-weight: 500;
@@ -195,11 +196,37 @@
         /* 카카오맵 내장 오버레이 패딩 초기화 */
         .kakaomap-iw-wrapper { padding: 0; margin: -5px -10px; background: transparent; }
 
+        /*********************************************************************
+         * 📱 모바일 환경 반응형 CSS 고도화 최적화 단락
+         *********************************************************************/
         @media (max-width: 768px) {
             body { padding: 8px; }
             .container { padding: 12px; border-radius: 8px; }
             h2 { font-size: 17px; margin-bottom: 15px; }
             
+            /* 📱 [모바일 최적화] 말풍선의 폭과 높이를 압축 설정 */
+            .custom-iw-container {
+                min-width: 220px !important;
+                max-width: 245px !important;
+                max-height: 230px !important;
+                padding: 10px 11px !important;
+                border-radius: 10px !important;
+            }
+            .popup-store-block {
+                margin-bottom: 8px !important;
+                padding-bottom: 8px !important;
+            }
+            .popup-info-table {
+                font-size: 11.5px !important; /* 텍스트 크기를 작게 축소 */
+            }
+            .popup-info-table th {
+                width: 68px !important;
+                padding: 2px 0 !important;
+            }
+            .popup-info-table td {
+                padding: 2px 0 2px 4px !important;
+            }
+
             .location-search-box { gap: 6px; }
             .location-search-input { width: 100%; flex: none; }
             .btn-location-search { flex: 1; text-align: center; }
@@ -422,9 +449,6 @@ function searchNewLocation() {
     });
 }
 
-/*********************************************************************
- * 🎯 [기능 구현] 주소/좌표가 같을 때 다중 표기 및 실적 합산 알고리즘
- *********************************************************************/
 function displayStoreMarkersOnMap(data) {
     storeCustomOverlays.forEach(overlay => overlay.setMap(null));
     storeCustomOverlays = [];
@@ -437,7 +461,6 @@ function displayStoreMarkersOnMap(data) {
 
     const validStores = data.filter(item => item.lat > 0 && item.lng > 0);
 
-    // 1단계: 위경도 좌표(소수점 5자리 제한) 기준으로 데이터 그룹화
     const locationGroups = {};
     validStores.forEach(store => {
         const coordKey = `${store.lat.toFixed(5)}_${store.lng.toFixed(5)}`;
@@ -451,14 +474,12 @@ function displayStoreMarkersOnMap(data) {
         locationGroups[coordKey].stores.push(store);
     });
 
-    // 화면 과부하 방지 상위 80개 좌표 그룹 추출
     const groupKeys = Object.keys(locationGroups).slice(0, 80);
 
     groupKeys.forEach(key => {
         const group = locationGroups[key];
         const markerPosition = new kakao.maps.LatLng(group.lat, group.lng);
 
-        // 2단계: 동일한 좌표 내부에서 [거래처명] 기준으로 2차 병합 및 대리점 실적 합산
         const mergedStoreMap = {};
         group.stores.forEach(s => {
             const nameKey = s.name.trim();
@@ -476,10 +497,9 @@ function displayStoreMarkersOnMap(data) {
             if (s.type && !mergedStoreMap[nameKey].types.includes(s.type)) {
                 mergedStoreMap[nameKey].types.push(s.type);
             }
-            mergedStoreMap[nameKey].totalScore += s.score; // 대리점 실적 합계 계산
+            mergedStoreMap[nameKey].totalScore += s.score;
         });
 
-        // 대표 핀 클래스 결정 (첫 번째 상점 기준)
         const leadStore = group.stores[0];
         const isGJ = leadStore.agency.includes('광장대리점');
         const isPSM = leadStore.agency.toUpperCase().includes('PS&M') || leadStore.agency.includes('피에스앤마케팅');
@@ -502,7 +522,6 @@ function displayStoreMarkersOnMap(data) {
         customOverlay.setMap(map);
         storeCustomOverlays.push(customOverlay);
 
-        // 3단계: 요청한 스크린샷 양식의 둥근 말풍선 HTML 바인딩 구조화 생성
         let innerHTMLBlocks = '';
         Object.values(mergedStoreMap).forEach(merged => {
             innerHTMLBlocks += `
