@@ -71,23 +71,23 @@
         #map { width: 100%; height: 420px; border-radius: 6px; border: 1px solid #d1d5db; }
 
         /*********************************************************************
-         * 🎯 말풍선 컨테이너 기본 스타일 (PC 기준)
+         * 🎯 [업데이트] 좌우 스크롤 차단 및 한눈에 보기 최적화 말풍선 디자인
          *********************************************************************/
         .custom-iw-container {
             background: #ffffff;
             border: 2px solid #1e293b;
-            border-radius: 14px;
-            padding: 12px 14px;
-            box-shadow: 0 6px 16px rgba(0,0,0,0.15);
-            min-width: 250px;
-            max-width: 290px;
-            max-height: 280px;
+            border-radius: 12px;
+            padding: 10px 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            width: 245px;          /* 폭을 모바일 한 화면에 딱 들어오게 고정 */
+            max-height: 240px;     /* 초과 시 상하 스크롤만 허용 */
             overflow-y: auto;
+            overflow-x: hidden;    /* 좌우 스크롤 절대 발생 방지 */
             box-sizing: border-box;
         }
         .popup-store-block {
-            margin-bottom: 10px;
-            padding-bottom: 10px;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
             border-bottom: 1px dashed #cbd5e1;
         }
         .popup-store-block:last-child {
@@ -95,26 +95,24 @@
             padding-bottom: 0;
             border-bottom: none;
         }
-        .popup-info-table {
-            border-collapse: collapse;
-            font-size: 13px;
-            font-family: 'Malgun Gothic', sans-serif;
-            width: 100%;
+        
+        /* 📱 좌우 삐져나감 방지용 가로 한눈에 보기 전용 텍스트 열 */
+        .popup-item-row {
+            display: flex;
+            font-size: 12px;
+            line-height: 1.5;
+            margin-bottom: 2px;
         }
-        .popup-info-table th {
-            color: #475569;
+        .popup-item-row .label {
+            width: 65px;
             font-weight: bold;
-            padding: 3px 0;
-            text-align: left;
-            width: 75px;
-            vertical-align: top;
+            color: #475569;
+            flex-shrink: 0;
         }
-        .popup-info-table td {
-            padding: 3px 0 3px 6px;
+        .popup-item-row .value {
             color: #0f172a;
-            text-align: left;
-            font-weight: 500;
             word-break: break-all;
+            white-space: normal;
         }
 
         /* 🎨 미니멀 커스텀 지도 마커 디자인 */
@@ -193,38 +191,26 @@
         .info-status { font-size: 13px; font-weight: bold; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
         .total-count { color: #2563eb; }
 
-        /* 카카오맵 내장 오버레이 패딩 초기화 */
+        /* 🎯 [필수 제거] 카카오맵 기본 하얀색 말풍선의 기본 마진/패딩 박스 강제 초기화 */
         .kakaomap-iw-wrapper { padding: 0; margin: -5px -10px; background: transparent; }
+        .kakaomap-iw-wrapper * { box-sizing: border-box; }
 
-        /*********************************************************************
-         * 📱 모바일 환경 반응형 CSS 고도화 최적화 단락
-         *********************************************************************/
         @media (max-width: 768px) {
             body { padding: 8px; }
             .container { padding: 12px; border-radius: 8px; }
             h2 { font-size: 17px; margin-bottom: 15px; }
             
-            /* 📱 [모바일 최적화] 말풍선의 폭과 높이를 압축 설정 */
+            /* 모바일 말풍선 폭 초소형 고정 */
             .custom-iw-container {
-                min-width: 220px !important;
-                max-width: 245px !important;
-                max-height: 230px !important;
-                padding: 10px 11px !important;
-                border-radius: 10px !important;
+                width: 215px !important;
+                max-height: 200px !important;
+                padding: 8px 10px !important;
             }
-            .popup-store-block {
-                margin-bottom: 8px !important;
-                padding-bottom: 8px !important;
+            .popup-item-row {
+                font-size: 11px !important;
             }
-            .popup-info-table {
-                font-size: 11.5px !important; /* 텍스트 크기를 작게 축소 */
-            }
-            .popup-info-table th {
-                width: 68px !important;
-                padding: 2px 0 !important;
-            }
-            .popup-info-table td {
-                padding: 2px 0 2px 4px !important;
+            .popup-item-row .label {
+                width: 60px !important;
             }
 
             .location-search-box { gap: 6px; }
@@ -522,28 +508,27 @@ function displayStoreMarkersOnMap(data) {
         customOverlay.setMap(map);
         storeCustomOverlays.push(customOverlay);
 
+        /* 📱 [업데이트] 테이블 구조 제거 -> 가로 넘침 없는 Flex 구조로 한눈에 매핑 */
         let innerHTMLBlocks = '';
         Object.values(mergedStoreMap).forEach(merged => {
             innerHTMLBlocks += `
                 <div class="popup-store-block">
-                    <table class="popup-info-table">
-                        <tr>
-                            <th>거래처명</th>
-                            <td><b>${merged.name}</b></td>
-                        </tr>
-                        <tr>
-                            <th>대리점명</th>
-                            <td>${merged.agencies.join(', ') || '정보없음'}</td>
-                        </tr>
-                        <tr>
-                            <th>중복여부</th>
-                            <td>${merged.types.join(', ')}</td>
-                        </tr>
-                        <tr>
-                            <th>대리점실적</th>
-                            <td><b>${merged.totalScore.toLocaleString()}건</b></td>
-                        </tr>
-                    </table>
+                    <div class="popup-item-row">
+                        <span class="label">거래처명</span>
+                        <span class="value" style="font-weight:bold; color:#1e293b;">${merged.name}</span>
+                    </div>
+                    <div class="popup-item-row">
+                        <span class="label">대리점명</span>
+                        <span class="value">${merged.agencies.join(', ') || '정보없음'}</span>
+                    </div>
+                    <div class="popup-item-row">
+                        <span class="label">중복여부</span>
+                        <span class="value">${merged.types.join(', ')}</span>
+                    </div>
+                    <div class="popup-item-row">
+                        <span class="label">대리점실적</span>
+                        <span class="value" style="font-weight:bold; color:#2563eb;">${merged.totalScore.toLocaleString()}건</span>
+                    </div>
                 </div>
             `;
         });
@@ -562,8 +547,12 @@ function displayStoreMarkersOnMap(data) {
             disableAutoPan: false
         });
 
+        // 🎯 [핵심 기능] 클릭하면 지도가 해당 핀의 정중앙 위치로 순간이동하여 한눈에 정렬됨
         contentEl.addEventListener('click', function() {
             if (currentOpenedInfoWindow) currentOpenedInfoWindow.close();
+            
+            map.panTo(markerPosition); // 부드럽게 중심 이동 시키기
+            
             infowindow.setPosition(markerPosition);
             infowindow.open(map);
             currentOpenedInfoWindow = infowindow;
