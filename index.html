@@ -60,7 +60,7 @@
         .map-title { font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #374151; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         
         .location-search-box { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; width: 100%; }
-        .location-search-input { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #2563eb; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; width: 100%; }
+        .location-search-input { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #2563eb; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; width: 100%; background-color: #fff; }
         .btn-location-search { padding: 8px 16px; background-color: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; white-space: nowrap; }
         .btn-location-search:hover { background-color: #1d4ed8; }
         
@@ -71,7 +71,7 @@
         #map { width: 100%; height: 420px; border-radius: 6px; border: 1px solid #d1d5db; }
 
         /*********************************************************************
-         * 🎯 [업데이트] 좌우 스크롤 차단 및 한눈에 보기 최적화 말풍선 디자인
+         * 🎯 좌우 스크롤 차단 및 한눈에 보기 최적화 말풍선 디자인
          *********************************************************************/
         .custom-iw-container {
             background: #ffffff;
@@ -191,7 +191,7 @@
         .info-status { font-size: 13px; font-weight: bold; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
         .total-count { color: #2563eb; }
 
-        /* 🎯 [필수 제거] 카카오맵 기본 하얀색 말풍선의 기본 마진/패딩 박스 강제 초기화 */
+        /* 카카오맵 내장 오버레이 박스 강제 초기화 */
         .kakaomap-iw-wrapper { padding: 0; margin: -5px -10px; background: transparent; }
         .kakaomap-iw-wrapper * { box-sizing: border-box; }
 
@@ -460,7 +460,8 @@ function displayStoreMarkersOnMap(data) {
         locationGroups[coordKey].stores.push(store);
     });
 
-    const groupKeys = Object.keys(locationGroups).slice(0, 80);
+    /* 🎯 [수정] 상위 제한 개수를 200개로 확장 */
+    const groupKeys = Object.keys(locationGroups).slice(0, 200);
 
     groupKeys.forEach(key => {
         const group = locationGroups[key];
@@ -508,7 +509,6 @@ function displayStoreMarkersOnMap(data) {
         customOverlay.setMap(map);
         storeCustomOverlays.push(customOverlay);
 
-        /* 📱 [업데이트] 테이블 구조 제거 -> 가로 넘침 없는 Flex 구조로 한눈에 매핑 */
         let innerHTMLBlocks = '';
         Object.values(mergedStoreMap).forEach(merged => {
             innerHTMLBlocks += `
@@ -547,11 +547,10 @@ function displayStoreMarkersOnMap(data) {
             disableAutoPan: false
         });
 
-        // 🎯 [핵심 기능] 클릭하면 지도가 해당 핀의 정중앙 위치로 순간이동하여 한눈에 정렬됨
         contentEl.addEventListener('click', function() {
             if (currentOpenedInfoWindow) currentOpenedInfoWindow.close();
             
-            map.panTo(markerPosition); // 부드럽게 중심 이동 시키기
+            map.panTo(markerPosition); 
             
             infowindow.setPosition(markerPosition);
             infowindow.open(map);
@@ -851,7 +850,8 @@ function renderTable(data) {
     data.sort((a, b) => a.distance - b.distance);
     displayStoreMarkersOnMap(data);
 
-    const limitData = data.slice(0, 80); 
+    /* 🎯 [수정] 테이블에 렌더링할 개수 상한을 200개로 변경 */
+    const limitData = data.slice(0, 200); 
     limitData.forEach(item => {
         const fullAddress = `${item.sido} ${item.sigungu} ${item.address}`.trim();
         const kakaoMapUrl = `https://map.kakao.com/link/search/${encodeURIComponent(fullAddress)}`;
@@ -899,8 +899,9 @@ function renderTable(data) {
         `;
     });
 
-    if (data.length > 80) {
-        tbody.innerHTML += `<tr><td colspan="8" style="padding:15px; background:#f3f4f6; color:#4b5563; font-weight:bold;">⚠️ 데이터가 너무 많아 상위 80개만 화면에 표시 중입니다. 필터를 이용해 범위를 좁혀주세요.</td></tr>`;
+    /* 🎯 [수정] 안내 문구 한도 조건 또한 200개로 변경 */
+    if (data.length > 200) {
+        tbody.innerHTML += `<tr><td colspan="8" style="padding:15px; background:#f3f4f6; color:#4b5563; font-weight:bold;">⚠️ 데이터가 너무 많아 상위 200개만 화면에 표시 중입니다. 필터를 이용해 범위를 좁혀주세요.</td></tr>`;
     }
 }
 
