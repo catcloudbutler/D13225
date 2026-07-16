@@ -60,7 +60,7 @@
         .map-title { font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #374151; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         
         .location-search-box { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; width: 100%; }
-        .location-search-input { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #2563eb; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; width: 100%; }
+        .location-search-input { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #2563eb; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; width: 100%; background-color: #fff; }
         .btn-location-search { padding: 8px 16px; background-color: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; white-space: nowrap; }
         .btn-location-search:hover { background-color: #1d4ed8; }
         
@@ -71,7 +71,7 @@
         #map { width: 100%; height: 420px; border-radius: 6px; border: 1px solid #d1d5db; }
 
         /*********************************************************************
-         * 🎯 [개선] 가로 스크롤 없는 초밀착 한눈에 말풍선(CustomOverlay) 디자인
+         * 🎯 [개선] 가로 스크롤 완전 방지 + 세로 스크롤 지원 말풍선 디자인
          *********************************************************************/
         .popup-wrap {
             background: #ffffff;
@@ -80,11 +80,11 @@
             border-radius: 10px;
             padding: 8px 10px 10px 10px;
             position: absolute;
-            bottom: 42px; /* 마커 바로 위에 밀착 */
+            bottom: 42px; /* 마커 위에 밀착 */
             left: 50%;
             transform: translateX(-50%);
             z-index: 1000;
-            width: 250px; /* 고정 크기로 스크롤 완벽 예방 */
+            width: 255px; /* 한눈에 들어오는 가로 너비 고정 */
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
@@ -103,17 +103,19 @@
             display: block;
             width: 0;
         }
+        /* 말풍선 고정 상단 헤더 */
         .popup-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid #f1f5f9;
-            padding-bottom: 4px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 6px;
+            flex-shrink: 0;
         }
         .popup-title {
-            font-size: 10px;
+            font-size: 10.5px;
             font-weight: 800;
-            color: #64748b;
+            color: #475569;
             text-overflow: ellipsis;
             white-space: nowrap;
             overflow: hidden;
@@ -133,7 +135,33 @@
             color: #0f172a;
         }
 
-        /* 거래처별 리스트 박스 */
+        /* 🔄 다중 거래처 표시 세로 스크롤 컨테이너 영역 */
+        .popup-scroll-container {
+            max-height: 230px; /* 말풍선이 화면 밖으로 넘치지 않도록 적정 최대 높이 설정 */
+            overflow-y: auto;  /* 세로 방향 스크롤 적용 */
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-right: 4px; /* 스크롤바와 내용 간격 확보 */
+        }
+
+        /* 🎨 미니멀 스크롤바 디자인 */
+        .popup-scroll-container::-webkit-scrollbar {
+            width: 5px;
+        }
+        .popup-scroll-container::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        .popup-scroll-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .popup-scroll-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* 거래처 카드 박스 */
         .popup-store-card {
             background-color: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -321,6 +349,10 @@
             .badge { font-size: 9.5px; padding: 2px 4px; }
             .distance-tag { font-size: 9.5px; padding: 1px 4px; }
             #map { height: 280px; }
+            
+            /* 모바일 말풍선 크기 세밀 조절 */
+            .popup-wrap { width: 235px; }
+            .popup-scroll-container { max-height: 200px; }
         }
     </style>
 </head>
@@ -529,7 +561,7 @@ function searchNewLocation() {
 }
 
 /*********************************************************************
- * 🎯 [기능 업그레이드] 주소 & 거래처명 기준 다중 그룹화 및 대리점 실적 합계 표출
+ * 🎯 [기능 반영] 주소별 거래처 다중 표시 및 말풍선 내부 세로 스크롤 구현
  *********************************************************************/
 function displayStoreMarkersOnMap(data) {
     storeCustomOverlays.forEach(overlay => overlay.setMap(null));
@@ -541,11 +573,9 @@ function displayStoreMarkersOnMap(data) {
 
     if (!map || data.length === 0) return;
 
-    // 1. 유효한 위도/경도를 가진 데이터 추출
     const validStores = data.filter(item => item.lat > 0 && item.lng > 0);
     validStores.sort((a, b) => a.distance - b.distance);
 
-    // 2. 같은 상세주소(지번/도로명 기준 그룹화)를 사용하는 매장 그룹 생성
     const addressGroups = new Map();
     validStores.forEach(store => {
         const fullAddr = `${store.sido} ${store.sigungu} ${store.address}`.trim();
@@ -555,15 +585,13 @@ function displayStoreMarkersOnMap(data) {
         addressGroups.get(fullAddr).push(store);
     });
 
-    // 3. 상위 80개의 고유 주소지만 지도에 표시 (성능 및 시각적 한계 보완)
     const uniqueAddresses = Array.from(addressGroups.keys()).slice(0, 80);
 
     uniqueAddresses.forEach(address => {
         const storesAtAddress = addressGroups.get(address);
-        const representativeStore = storesAtAddress[0]; // 대표 좌표 획득
+        const representativeStore = storesAtAddress[0]; 
         const markerPosition = new kakao.maps.LatLng(representativeStore.lat, representativeStore.lng);
 
-        // 시그니처 핀 마커 색상 지정 (대표 마커 기준)
         const isGJ = storesAtAddress.some(s => s.agency.includes('광장대리점'));
         const isPSM = storesAtAddress.some(s => s.agency.toUpperCase().includes('PS&M') || s.agency.includes('피에스앤마케팅'));
         
@@ -585,24 +613,21 @@ function displayStoreMarkersOnMap(data) {
         customOverlay.setMap(map);
         storeCustomOverlays.push(customOverlay);
 
-        // 마커 클릭 리스너 등록
         contentEl.addEventListener('click', function() {
             if (currentOpenedOverlay) {
                 currentOpenedOverlay.setMap(null);
             }
 
-            // [동적 그룹화 로직]: 주소가 같은 데이터 중 '거래처명(name)'을 기준으로 중복 합산 수행
             const nameGroups = new Map();
             storesAtAddress.forEach(store => {
                 if (!nameGroups.has(store.name)) {
                     nameGroups.set(store.name, {
                         pcode: store.pcode,
                         type: store.type,
-                        agencies: [] // { agencyName, agencyScore } 목록
+                        agencies: [] 
                     });
                 }
                 const currentGroup = nameGroups.get(store.name);
-                // 해당 대리점이 목록에 존재하지 않는 경우 신규 등록
                 if (!currentGroup.agencies.some(a => a.name === store.agency)) {
                     currentGroup.agencies.push({
                         name: store.agency,
@@ -614,15 +639,17 @@ function displayStoreMarkersOnMap(data) {
             const popupEl = document.createElement('div');
             popupEl.className = 'popup-wrap';
 
-            // 상단 닫기 X 헤더 영역
+            // 고정 상단 헤더 영역
             let bodyHtml = `
                 <div class="popup-header">
                     <span class="popup-title">📍 ${address}</span>
                     <button class="popup-close-btn">✕</button>
                 </div>
+                <!-- 🔄 세로 방향 내부 스크롤 컨테이너 -->
+                <div class="popup-scroll-container">
             `;
 
-            // 거래처별 구조화된 카드 박스 생성
+            // 여러 거래처 카드 생성
             nameGroups.forEach((info, storeName) => {
                 const totalScore = info.agencies.reduce((sum, item) => sum + item.score, 0);
                 
@@ -647,9 +674,10 @@ function displayStoreMarkersOnMap(data) {
                 `;
             });
 
+            // 스크롤 컨테이너 태그 닫기
+            bodyHtml += `</div>`; 
             popupEl.innerHTML = bodyHtml;
 
-            // X 닫기 버튼 이벤트 작동
             popupEl.querySelector('.popup-close-btn').onclick = function() {
                 popupOverlay.setMap(null);
                 if (currentOpenedOverlay === popupOverlay) {
