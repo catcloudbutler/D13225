@@ -71,7 +71,7 @@
         #map { width: 100%; height: 420px; border-radius: 6px; border: 1px solid #d1d5db; }
 
         /*********************************************************************
-         * 🎯 좌우 스크롤 차단 및 한눈에 보기 최적화 말풍선 디자인
+         * 🎯 [개선] P코드 포함 및 좌우 스크롤 차단 말풍선 디자인
          *********************************************************************/
         .custom-iw-container {
             background: #ffffff;
@@ -79,15 +79,15 @@
             border-radius: 12px;
             padding: 10px 12px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            width: 245px;          /* 폭을 모바일 한 화면에 딱 들어오게 고정 */
-            max-height: 240px;     /* 초과 시 상하 스크롤만 허용 */
+            width: 250px;          
+            max-height: 250px;     
             overflow-y: auto;
-            overflow-x: hidden;    /* 좌우 스크롤 절대 발생 방지 */
+            overflow-x: hidden;    
             box-sizing: border-box;
         }
         .popup-store-block {
-            margin-bottom: 8px;
-            padding-bottom: 8px;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
             border-bottom: 1px dashed #cbd5e1;
         }
         .popup-store-block:last-child {
@@ -96,7 +96,6 @@
             border-bottom: none;
         }
         
-        /* 📱 좌우 삐져나감 방지용 가로 한눈에 보기 전용 텍스트 열 */
         .popup-item-row {
             display: flex;
             font-size: 12px;
@@ -104,7 +103,7 @@
             margin-bottom: 2px;
         }
         .popup-item-row .label {
-            width: 65px;
+            width: 70px;
             font-weight: bold;
             color: #475569;
             flex-shrink: 0;
@@ -200,17 +199,16 @@
             .container { padding: 12px; border-radius: 8px; }
             h2 { font-size: 17px; margin-bottom: 15px; }
             
-            /* 모바일 말풍선 폭 초소형 고정 */
             .custom-iw-container {
-                width: 215px !important;
-                max-height: 200px !important;
+                width: 220px !important;
+                max-height: 220px !important;
                 padding: 8px 10px !important;
             }
             .popup-item-row {
                 font-size: 11px !important;
             }
             .popup-item-row .label {
-                width: 60px !important;
+                width: 65px !important;
             }
 
             .location-search-box { gap: 6px; }
@@ -435,6 +433,9 @@ function searchNewLocation() {
     });
 }
 
+/*********************************************************************
+ * 🎯 [수정] 상상통신 중복 누락 방지 및 말풍선 P코드 추가 로직
+ *********************************************************************/
 function displayStoreMarkersOnMap(data) {
     storeCustomOverlays.forEach(overlay => overlay.setMap(null));
     storeCustomOverlays = [];
@@ -460,31 +461,26 @@ function displayStoreMarkersOnMap(data) {
         locationGroups[coordKey].stores.push(store);
     });
 
-    /* 🎯 [수정] 상위 제한 개수를 200개로 확장 */
     const groupKeys = Object.keys(locationGroups).slice(0, 200);
 
     groupKeys.forEach(key => {
         const group = locationGroups[key];
         const markerPosition = new kakao.maps.LatLng(group.lat, group.lng);
 
+        // 🛠️ 거래처명뿐만 아니라 P코드와 대리점명까지 결합하여 완벽한 고유 키 생성 (상상통신 중복 분리 처리)
         const mergedStoreMap = {};
         group.stores.forEach(s => {
-            const nameKey = s.name.trim();
-            if (!mergedStoreMap[nameKey]) {
-                mergedStoreMap[nameKey] = {
-                    name: nameKey,
-                    agencies: [],
-                    types: [],
+            const storeUniqueKey = `${s.pcode}_${s.name.trim()}_${s.agency.trim()}`;
+            if (!mergedStoreMap[storeUniqueKey]) {
+                mergedStoreMap[storeUniqueKey] = {
+                    pcode: s.pcode,
+                    name: s.name.trim(),
+                    agency: s.agency.trim(),
+                    type: s.type,
                     totalScore: 0
                 };
             }
-            if (s.agency && !mergedStoreMap[nameKey].agencies.includes(s.agency)) {
-                mergedStoreMap[nameKey].agencies.push(s.agency);
-            }
-            if (s.type && !mergedStoreMap[nameKey].types.includes(s.type)) {
-                mergedStoreMap[nameKey].types.push(s.type);
-            }
-            mergedStoreMap[nameKey].totalScore += s.score;
+            mergedStoreMap[storeUniqueKey].totalScore += s.score;
         });
 
         const leadStore = group.stores[0];
@@ -514,20 +510,24 @@ function displayStoreMarkersOnMap(data) {
             innerHTMLBlocks += `
                 <div class="popup-store-block">
                     <div class="popup-item-row">
+                        <span class="label">P코드</span>
+                        <span class="value" style="font-weight:bold; color:#2563eb;">${merged.pcode}</span>
+                    </div>
+                    <div class="popup-item-row">
                         <span class="label">거래처명</span>
                         <span class="value" style="font-weight:bold; color:#1e293b;">${merged.name}</span>
                     </div>
                     <div class="popup-item-row">
                         <span class="label">대리점명</span>
-                        <span class="value">${merged.agencies.join(', ') || '정보없음'}</span>
+                        <span class="value">${merged.agency || '정보없음'}</span>
                     </div>
                     <div class="popup-item-row">
                         <span class="label">중복여부</span>
-                        <span class="value">${merged.types.join(', ')}</span>
+                        <span class="value">${merged.type}</span>
                     </div>
                     <div class="popup-item-row">
                         <span class="label">대리점실적</span>
-                        <span class="value" style="font-weight:bold; color:#2563eb;">${merged.totalScore.toLocaleString()}건</span>
+                        <span class="value" style="font-weight:bold; color:#16a34a;">${merged.totalScore.toLocaleString()}건</span>
                     </div>
                 </div>
             `;
@@ -850,7 +850,6 @@ function renderTable(data) {
     data.sort((a, b) => a.distance - b.distance);
     displayStoreMarkersOnMap(data);
 
-    /* 🎯 [수정] 테이블에 렌더링할 개수 상한을 200개로 변경 */
     const limitData = data.slice(0, 200); 
     limitData.forEach(item => {
         const fullAddress = `${item.sido} ${item.sigungu} ${item.address}`.trim();
@@ -899,7 +898,6 @@ function renderTable(data) {
         `;
     });
 
-    /* 🎯 [수정] 안내 문구 한도 조건 또한 200개로 변경 */
     if (data.length > 200) {
         tbody.innerHTML += `<tr><td colspan="8" style="padding:15px; background:#f3f4f6; color:#4b5563; font-weight:bold;">⚠️ 데이터가 너무 많아 상위 200개만 화면에 표시 중입니다. 필터를 이용해 범위를 좁혀주세요.</td></tr>`;
     }
