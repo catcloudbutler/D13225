@@ -71,55 +71,55 @@
         #map { width: 100%; height: 420px; border-radius: 6px; border: 1px solid #d1d5db; }
 
         /*********************************************************************
-         * 🎯 [개선] 가로 스크롤 완전 방지 + 세로 스크롤 지원 말풍선 디자인
+         * 🎯 [개선] 가로 컴팩트 고정 + 다중 거래처 세로 스크롤 전용 말풍선
          *********************************************************************/
         .popup-wrap {
             background: #ffffff;
-            border: 1px solid #94a3b8;
-            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2), 0 8px 10px -6px rgba(0,0,0,0.2);
-            border-radius: 10px;
-            padding: 8px 10px 10px 10px;
+            border: 2px solid #3b82f6;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.25), 0 8px 10px -6px rgba(0,0,0,0.25);
+            border-radius: 12px;
+            padding: 10px;
             position: absolute;
-            bottom: 42px; /* 마커 위에 밀착 */
+            bottom: 45px; /* 마커 바짝 위에 안착 */
             left: 50%;
             transform: translateX(-50%);
-            z-index: 1000;
-            width: 255px; /* 한눈에 들어오는 가로 너비 고정 */
+            z-index: 1010;
+            width: 270px; /* 고정 가로폭으로 화면 틀어짐 방지 */
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 8px;
         }
         /* 말풍선 꼬리표 */
         .popup-wrap::after {
             content: '';
             position: absolute;
-            bottom: -8px;
+            bottom: -10px;
             left: 50%;
             transform: translateX(-50%);
-            border-width: 8px 8px 0;
+            border-width: 10px 10px 0;
             border-style: solid;
-            border-color: #ffffff transparent;
+            border-color: #3b82f6 transparent;
             display: block;
             width: 0;
         }
-        /* 말풍선 고정 상단 헤더 */
+        /* 말풍선 상단 고정 헤더 */
         .popup-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 2px solid #e2e8f0;
             padding-bottom: 6px;
             flex-shrink: 0;
         }
         .popup-title {
-            font-size: 10.5px;
+            font-size: 11px;
             font-weight: 800;
-            color: #475569;
+            color: #1e293b;
             text-overflow: ellipsis;
             white-space: nowrap;
             overflow: hidden;
-            max-width: 200px;
+            max-width: 220px;
         }
         .popup-close-btn {
             cursor: pointer;
@@ -129,55 +129,56 @@
             border: none;
             background: none;
             line-height: 1;
-            padding: 0 4px;
+            padding: 0 2px;
         }
         .popup-close-btn:hover {
-            color: #0f172a;
+            color: #ef4444;
         }
 
-        /* 🔄 다중 거래처 표시 세로 스크롤 컨테이너 영역 */
+        /* 🔄 [핵심] 여러 거래처가 있을 때 스크롤되는 영역 */
         .popup-scroll-container {
-            max-height: 230px; /* 말풍선이 화면 밖으로 넘치지 않도록 적정 최대 높이 설정 */
-            overflow-y: auto;  /* 세로 방향 스크롤 적용 */
+            max-height: 240px; /* 여러 개일 때 최대 높이를 제한 */
+            overflow-y: auto;  /* 이 범위를 넘어가면 아래로 스크롤 가능 */
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            padding-right: 4px; /* 스크롤바와 내용 간격 확보 */
+            gap: 10px;
+            padding-right: 4px; /* 스크롤바 영역 확보 */
         }
 
-        /* 🎨 미니멀 스크롤바 디자인 */
+        /* 🎨 미니 스크롤바 커스텀 */
         .popup-scroll-container::-webkit-scrollbar {
-            width: 5px;
+            width: 6px;
         }
         .popup-scroll-container::-webkit-scrollbar-track {
             background: #f1f5f9;
-            border-radius: 4px;
+            border-radius: 3px;
         }
         .popup-scroll-container::-webkit-scrollbar-thumb {
             background: #cbd5e1;
-            border-radius: 4px;
+            border-radius: 3px;
         }
         .popup-scroll-container::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
 
-        /* 거래처 카드 박스 */
+        /* 개별 거래처 카드 디자인 */
         .popup-store-card {
             background-color: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 6px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 8px;
             font-size: 11px;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
         .popup-store-name {
             font-weight: bold;
-            color: #1e293b;
-            font-size: 12px;
-            border-bottom: 1px solid #cbd5e1;
-            padding-bottom: 2px;
+            color: #1e3a8a;
+            font-size: 12.5px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 4px;
             margin-bottom: 2px;
             display: flex;
             justify-content: space-between;
@@ -186,39 +187,43 @@
         .popup-store-pcode {
             font-size: 10px;
             color: #2563eb;
-            font-weight: 600;
+            font-weight: 800;
+            background-color: #eff6ff;
+            padding: 1px 4px;
+            border-radius: 4px;
         }
         .popup-agency-title {
             font-weight: bold;
             color: #475569;
-            margin-top: 2px;
+            margin-top: 1px;
         }
         .popup-agency-list {
             margin: 0;
-            padding-left: 8px;
+            padding-left: 6px;
             list-style-type: none;
             color: #334155;
-            font-size: 10.5px;
+            font-size: 11px;
         }
         .popup-agency-list li {
             position: relative;
-            padding-left: 8px;
-            margin-bottom: 1px;
+            padding-left: 10px;
+            margin-bottom: 2px;
         }
         .popup-agency-list li::before {
             content: "•";
             position: absolute;
             left: 0;
-            color: #64748b;
+            color: #3b82f6;
+            font-weight: bold;
         }
         .popup-total-score {
             text-align: right;
             font-weight: 800;
             color: #16a34a;
-            font-size: 10.5px;
-            margin-top: 2px;
-            border-top: 1px dashed #e2e8f0;
-            padding-top: 2px;
+            font-size: 11px;
+            margin-top: 4px;
+            border-top: 1px dashed #cbd5e1;
+            padding-top: 4px;
         }
 
         /* 🎨 미니멀 커스텀 지도 마커 디자인 */
@@ -298,7 +303,7 @@
         .total-count { color: #2563eb; }
 
         /*********************************************************************
-         * 📱 모바일 전용 반응형 미세 웹뷰 레이아웃 최적화
+         * 📱 모바일 전용 반응형 레이아웃 최적화
          *********************************************************************/
         @media (max-width: 768px) {
             body { padding: 8px; }
@@ -350,8 +355,8 @@
             .distance-tag { font-size: 9.5px; padding: 1px 4px; }
             #map { height: 280px; }
             
-            /* 모바일 말풍선 크기 세밀 조절 */
-            .popup-wrap { width: 235px; }
+            /* 모바일 말풍선 최적화 */
+            .popup-wrap { width: 245px; }
             .popup-scroll-container { max-height: 200px; }
         }
     </style>
@@ -561,9 +566,10 @@ function searchNewLocation() {
 }
 
 /*********************************************************************
- * 🎯 [기능 반영] 주소별 거래처 다중 표시 및 말풍선 내부 세로 스크롤 구현
+ * 🎯 [핵심 알고리즘 수정] 동일 주소/동일 좌표의 "모든" 거래처 묶어서 표시
  *********************************************************************/
 function displayStoreMarkersOnMap(data) {
+    // 1. 기존 마커 및 말풍선 정리
     storeCustomOverlays.forEach(overlay => overlay.setMap(null));
     storeCustomOverlays = [];
     if (currentOpenedOverlay) {
@@ -573,33 +579,37 @@ function displayStoreMarkersOnMap(data) {
 
     if (!map || data.length === 0) return;
 
+    // 2. 좌표가 있는 유효한 데이터 필터링
     const validStores = data.filter(item => item.lat > 0 && item.lng > 0);
-    validStores.sort((a, b) => a.distance - b.distance);
 
-    const addressGroups = new Map();
+    // 3. 좌표(위도_경도)를 고유 키로 그룹화하여 완벽 매칭 (미세 오차 방지하기 위해 소수점 5자리 반올림 처리)
+    const coordGroups = new Map();
     validStores.forEach(store => {
-        const fullAddr = `${store.sido} ${store.sigungu} ${store.address}`.trim();
-        if (!addressGroups.has(fullAddr)) {
-            addressGroups.set(fullAddr, []);
+        const coordKey = `${store.lat.toFixed(5)}_${store.lng.toFixed(5)}`;
+        if (!coordGroups.has(coordKey)) {
+            coordGroups.set(coordKey, []);
         }
-        addressGroups.get(fullAddr).push(store);
+        coordGroups.get(coordKey).push(store);
     });
 
-    const uniqueAddresses = Array.from(addressGroups.keys()).slice(0, 80);
+    // 4. 지도상에 마커 생성 및 클릭 이벤트 바인딩 (성능 확보 위해 상위 100개 그룹 기준 시각화)
+    const uniqueCoords = Array.from(coordGroups.keys()).slice(0, 100);
 
-    uniqueAddresses.forEach(address => {
-        const storesAtAddress = addressGroups.get(address);
-        const representativeStore = storesAtAddress[0]; 
+    uniqueCoords.forEach(coordKey => {
+        const storesAtCoord = coordGroups.get(coordKey);
+        const representativeStore = storesAtCoord[0]; 
         const markerPosition = new kakao.maps.LatLng(representativeStore.lat, representativeStore.lng);
 
-        const isGJ = storesAtAddress.some(s => s.agency.includes('광장대리점'));
-        const isPSM = storesAtAddress.some(s => s.agency.toUpperCase().includes('PS&M') || s.agency.includes('피에스앤마케팅'));
+        // 해당 좌표 그룹에 어떤 대리점/거래처가 속해 있는지 확인하여 마커 핀 색상 선정
+        const isGJ = storesAtCoord.some(s => s.agency.includes('광장대리점'));
+        const isPSM = storesAtCoord.some(s => s.agency.toUpperCase().includes('PS&M') || s.agency.includes('피에스앤마케팅'));
         
         let pinClass = "pin-normal";
         if (isGJ) { pinClass = "pin-gj"; } 
-        else if (isPSM && storesAtAddress.some(s => s.type === 'PS_전속')) { pinClass = "pin-psm-exclusive"; } 
-        else if (isPSM && storesAtAddress.some(s => s.type === '중복점')) { pinClass = "pin-psm-duplicate"; }
+        else if (isPSM && storesAtCoord.some(s => s.type === 'PS_전속')) { pinClass = "pin-psm-exclusive"; } 
+        else if (isPSM && storesAtCoord.some(s => s.type === '중복점')) { pinClass = "pin-psm-duplicate"; }
 
+        // 마커(핀) 엘리먼트 생성
         const contentEl = document.createElement('div');
         contentEl.className = `custom-pin-marker ${pinClass}`;
 
@@ -613,44 +623,53 @@ function displayStoreMarkersOnMap(data) {
         customOverlay.setMap(map);
         storeCustomOverlays.push(customOverlay);
 
+        // 마커 클릭 시 말풍선 노출
         contentEl.addEventListener('click', function() {
             if (currentOpenedOverlay) {
                 currentOpenedOverlay.setMap(null);
             }
 
-            const nameGroups = new Map();
-            storesAtAddress.forEach(store => {
-                if (!nameGroups.has(store.name)) {
-                    nameGroups.set(store.name, {
+            // 대표 주소 산정
+            const repAddress = `${representativeStore.sido} ${representativeStore.sigungu} ${representativeStore.address}`.trim();
+
+            // 동일 좌표에 존재하는 거래처들을 '거래처명(P코드)' 단위로 최종 정합
+            const storeNameMap = new Map();
+            storesAtCoord.forEach(store => {
+                const storeUniqueId = `${store.name}_${store.pcode}`;
+                if (!storeNameMap.has(storeUniqueId)) {
+                    storeNameMap.set(storeUniqueId, {
+                        name: store.name,
                         pcode: store.pcode,
                         type: store.type,
                         agencies: [] 
                     });
                 }
-                const currentGroup = nameGroups.get(store.name);
-                if (!currentGroup.agencies.some(a => a.name === store.agency)) {
-                    currentGroup.agencies.push({
+                const currentObj = storeNameMap.get(storeUniqueId);
+                // 중복 기록 방지하며 대리점 및 실적 추가
+                if (!currentObj.agencies.some(a => a.name === store.agency)) {
+                    currentObj.agencies.push({
                         name: store.agency,
                         score: store.score
                     });
                 }
             });
 
+            // 말풍선 레이아웃 설계
             const popupEl = document.createElement('div');
             popupEl.className = 'popup-wrap';
 
-            // 고정 상단 헤더 영역
+            // 고정 상단 헤더 (주소 정보 표시)
             let bodyHtml = `
                 <div class="popup-header">
-                    <span class="popup-title">📍 ${address}</span>
+                    <span class="popup-title">📍 ${repAddress}</span>
                     <button class="popup-close-btn">✕</button>
                 </div>
-                <!-- 🔄 세로 방향 내부 스크롤 컨테이너 -->
+                <!-- 🔄 [핵심] 여러 거래처를 세로 스크롤할 수 있도록 감싸는 컨테이너 -->
                 <div class="popup-scroll-container">
             `;
 
-            // 여러 거래처 카드 생성
-            nameGroups.forEach((info, storeName) => {
+            // 가공 완료된 거래처 리스트를 하나도 빠짐없이 카드로 추가
+            storeNameMap.forEach((info) => {
                 const totalScore = info.agencies.reduce((sum, item) => sum + item.score, 0);
                 
                 let agencyRows = info.agencies.map(a => `
@@ -660,24 +679,27 @@ function displayStoreMarkersOnMap(data) {
                 bodyHtml += `
                     <div class="popup-store-card">
                         <div class="popup-store-name">
-                            <span>🏢 ${storeName}</span>
+                            <span>🏢 ${info.name}</span>
                             <span class="popup-store-pcode">${info.pcode}</span>
+                        </div>
+                        <div style="font-size: 10px; color: #475569; margin-bottom: 2px;">
+                            유형: <span class="badge" style="padding:1px 4px; font-size:9.5px; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155;">${info.type}</span>
                         </div>
                         <div class="popup-agency-title">📋 취급 대리점 목록:</div>
                         <ul class="popup-agency-list">
                             ${agencyRows}
                         </ul>
                         <div class="popup-total-score">
-                            대리점 실적 합계: ${totalScore.toLocaleString()}건
+                            실적 합계: ${totalScore.toLocaleString()}건
                         </div>
                     </div>
                 `;
             });
 
-            // 스크롤 컨테이너 태그 닫기
-            bodyHtml += `</div>`; 
+            bodyHtml += `</div>`; // 스크롤 컨테이너 닫기
             popupEl.innerHTML = bodyHtml;
 
+            // X 닫기 버튼 작동
             popupEl.querySelector('.popup-close-btn').onclick = function() {
                 popupOverlay.setMap(null);
                 if (currentOpenedOverlay === popupOverlay) {
