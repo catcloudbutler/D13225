@@ -71,25 +71,25 @@
         #map { width: 100%; height: 420px; border-radius: 6px; border: 1px solid #d1d5db; }
 
         /*********************************************************************
-         * 🎯 마커 클릭 시 나타나는 팝업(CustomOverlay) 전체 스타일 최적화
+         * 🎯 [첫 번째 사진 반영] 말풍선(CustomOverlay) 크기 축소 및 정돈
          *********************************************************************/
         .popup-wrap {
             background: #ffffff;
             border: 1px solid #cbd5e1;
             box-shadow: 0 4px 15px rgba(0,0,0,0.15);
             border-radius: 8px;
-            padding: 10px;
+            padding: 8px;
             position: absolute;
-            bottom: 45px; /* 마커 머리 위에 안착하도록 보정 */
+            bottom: 42px; /* 마커 바투 위에 안착하도록 세밀 보정 */
             left: 50%;
             transform: translateX(-50%);
             z-index: 100;
-            width: 250px;
+            width: 220px; /* 기존 250px -> 220px 축소로 한눈에 보임 */
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 4px;
         }
-        /* 삼각형 꼬리꼬리 보정 */
+        /* 말풍선 꼬리표 */
         .popup-wrap::after {
             content: '';
             position: absolute;
@@ -102,44 +102,59 @@
             display: block;
             width: 0;
         }
-        /* 우측 상단 닫기 X 버튼 디자인 */
+        /* 닫기 버튼 크기 최적화 */
+        .popup-header {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 2px;
+        }
         .popup-close-btn {
-            align-self: flex-end;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 12px;
             font-weight: bold;
-            color: #64748b;
+            color: #94a3b8;
             border: none;
             background: none;
             line-height: 1;
-            padding: 0;
-            margin-bottom: 2px;
+            padding: 2px;
         }
         .popup-close-btn:hover {
-            color: #0f172a;
+            color: #475569;
         }
         .popup-info-table {
             border-collapse: collapse;
-            font-size: 12px;
+            font-size: 11px;
             font-family: 'Malgun Gothic', sans-serif;
             width: 100%;
             background: #ffffff;
         }
         .popup-info-table th {
             background-color: #f8fafc;
-            color: #475569;
+            color: #64748b;
             font-weight: bold;
-            padding: 6px 10px;
+            padding: 4px 6px;
             border: 1px solid #e2e8f0;
             text-align: left;
-            width: 80px;
+            width: 65px;
+            vertical-align: middle;
         }
         .popup-info-table td {
-            padding: 6px 10px;
+            padding: 4px 6px;
             border: 1px solid #e2e8f0;
             color: #0f172a;
             text-align: left;
             font-weight: 600;
+            vertical-align: middle;
+            word-break: break-all;
+        }
+        /* 중복 대리점 리스트를 구분하는 스타일 */
+        .popup-agency-item {
+            padding: 2px 0;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+        .popup-agency-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
         }
 
         /* 🎨 미니멀 커스텀 지도 마커 디자인 */
@@ -218,26 +233,58 @@
         .info-status { font-size: 13px; font-weight: bold; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
         .total-count { color: #2563eb; }
 
+        /*********************************************************************
+         * 📱 [두 번째 사진 반영] 모바일 전용 반응형 미세 웹뷰 레이아웃 최적화
+         *********************************************************************/
         @media (max-width: 768px) {
             body { padding: 8px; }
             .container { padding: 12px; border-radius: 8px; }
-            h2 { font-size: 17px; margin-bottom: 15px; }
+            h2 { font-size: 16px; margin-bottom: 12px; }
             
-            .location-search-box { gap: 6px; }
-            .location-search-input { width: 100%; flex: none; }
-            .btn-location-search { flex: 1; text-align: center; }
-            .btn-gps { flex: 1; text-align: center; }
-            .top-gps-msg { display: block; width: 100%; margin-left: 0; margin-top: 4px; text-align: left; font-size: 11px; }
+            .map-section { padding: 8px; margin-bottom: 10px; }
+            .location-search-box { gap: 4px; margin-bottom: 6px; }
+            .location-search-input { 
+                width: 100%; 
+                flex: none; 
+                padding: 6px 10px; 
+                font-size: 12px; 
+            }
+            .btn-location-search { 
+                flex: 1; 
+                padding: 6px 10px; 
+                font-size: 12px; 
+                text-align: center; 
+            }
+            .btn-gps { 
+                flex: 1; 
+                padding: 6px 10px; 
+                font-size: 12px; 
+                text-align: center; 
+            }
+            .top-gps-msg { 
+                display: block; 
+                width: 100%; 
+                margin-left: 0; 
+                margin-top: 2px; 
+                text-align: left; 
+                font-size: 10.5px; 
+            }
             
-            .filter-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 10px; }
-            .btn-group { grid-column: span 2; margin-top: 5px; }
-            .map-title { flex-direction: column; align-items: flex-start; gap: 6px; }
+            .filter-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; padding: 8px; margin-top: 8px; margin-bottom: 12px; }
+            .filter-group label { font-size: 11px; margin-bottom: 2px; }
+            .search-input { padding: 6px 8px; font-size: 12px; }
+            .btn-group { grid-column: span 2; margin-top: 3px; }
+            .btn-reset { padding: 7px; font-size: 12px; }
+            
+            .map-title { flex-direction: column; align-items: flex-start; gap: 4px; font-size: 12px; }
             .admin-pw-box { margin-left: 0; width: 100%; display: flex; justify-content: flex-start; }
-            table { font-size: 12px; min-width: 1050px; } 
-            th, td { padding: 8px 5px; }
-            .badge { font-size: 10px; padding: 2px 4px; }
-            .distance-tag { font-size: 10px; padding: 1px 5px; }
-            #map { height: 320px; }
+            .admin-pw-input { padding: 5px 8px; font-size: 11px; width: 100px; }
+            
+            table { font-size: 11px; min-width: 900px; } 
+            th, td { padding: 6px 4px; }
+            .badge { font-size: 9.5px; padding: 2px 4px; }
+            .distance-tag { font-size: 9.5px; padding: 1px 4px; }
+            #map { height: 280px; } /* 모바일에서 겹침 방지 및 높이 조절 */
         }
     </style>
 </head>
@@ -347,7 +394,7 @@ let map = null;
 let centerMarker = null;
 
 let storeCustomOverlays = []; 
-let currentOpenedOverlay = null; // 🛠️ 기존 InfoWindow 대신 전용 CustomOverlay 관리
+let currentOpenedOverlay = null; 
 let dragTimeout = null; 
 
 function checkAdminAccess() {
@@ -446,7 +493,7 @@ function searchNewLocation() {
 }
 
 /*********************************************************************
- * 🎯 내 위치 주변 실제 최단거리 80개 추출 및 세련된 팝업 렌더링 (X 버튼 연결 완료)
+ * 🎯 [첫 번째 사진 반영] 동일 P코드 복수 대리점 자동 그룹 통합 및 렌더링
  *********************************************************************/
 function displayStoreMarkersOnMap(data) {
     // 기존 마커(오버레이)들 지도에서 제거
@@ -459,12 +506,20 @@ function displayStoreMarkersOnMap(data) {
 
     if (!map || data.length === 0) return;
 
-    // 1. 위도, 경도 좌표가 유효하게 변환된 데이터 필터링
+    // 1. 유효 좌표 매장 필터링 및 고유 마커 위치(P코드 기준) 설정
     const validStores = data.filter(item => item.lat > 0 && item.lng > 0);
-
-    // 2. 거리 순 정렬 및 상위 80개 추출
     validStores.sort((a, b) => a.distance - b.distance);
-    const nearStores = validStores.slice(0, 80);
+    
+    // 2. 고유한 P코드 기준으로 첫 번째 매장 데이터를 대표 마커 데이터로 선정
+    const uniquePcodeMap = new Map();
+    validStores.forEach(store => {
+        if (!uniquePcodeMap.has(store.pcode)) {
+            uniquePcodeMap.set(store.pcode, store);
+        }
+    });
+
+    // 3. 지도에 표출할 매장 리스트 (상위 80개 고유 P코드 매장)
+    const nearStores = Array.from(uniquePcodeMap.values()).slice(0, 80);
 
     nearStores.forEach(store => {
         const markerPosition = new kakao.maps.LatLng(store.lat, store.lng);
@@ -490,43 +545,56 @@ function displayStoreMarkersOnMap(data) {
         customOverlay.setMap(map);
         storeCustomOverlays.push(customOverlay);
 
-        // 🛠️ 마커 클릭 시 나타날 수려한 커스텀 말풍선 생성
+        // 🛠️ 마커 클릭 리스너 등록
         contentEl.addEventListener('click', function() {
             if (currentOpenedOverlay) {
                 currentOpenedOverlay.setMap(null);
             }
 
+            // [핵심 로직] 동일 P코드를 사용하는 전체 데이터 필터링하여 대리점 리스트 병합
+            const matchingAgencies = csvData.filter(item => item.pcode === store.pcode);
+            
+            let agencyListHtml = '';
+            if (matchingAgencies.length > 1) {
+                // 여러 개 대리점이 있는 경우 줄바꿈 리스트로 포맷팅
+                agencyListHtml = matchingAgencies.map(m => `
+                    <div class="popup-agency-item">
+                        • ${m.agency} (${m.score.toLocaleString()}건)
+                    </div>
+                `).join('');
+            } else {
+                // 단일 대리점인 경우 일반 표기
+                agencyListHtml = `${store.agency || '정보없음'} (${store.score.toLocaleString()}건)`;
+            }
+
             const popupEl = document.createElement('div');
             popupEl.className = 'popup-wrap';
 
-            // HTML 내부 동적 렌더링 및 닫기 버튼 동적 기능 추가
             popupEl.innerHTML = `
-                <button class="popup-close-btn">✕</button>
+                <div class="popup-header">
+                    <button class="popup-close-btn">✕</button>
+                </div>
                 <table class="popup-info-table">
                     <tr>
                         <th>P코드</th>
-                        <td style="color:#2563eb;">${store.pcode || '정보없음'}</td>
+                        <td style="color:#2563eb; font-weight: bold;">${store.pcode || '정보없음'}</td>
                     </tr>
                     <tr>
                         <th>판매점 명</th>
                         <td>${store.name}</td>
                     </tr>
                     <tr>
-                        <th>대리점 명</th>
-                        <td>${store.agency || '정보없음'}</td>
+                        <th>대리점 실적</th>
+                        <td>${agencyListHtml}</td>
                     </tr>
                     <tr>
                         <th>중복여부</th>
                         <td>${store.type}</td>
                     </tr>
-                    <tr>
-                        <th>대리점실적</th>
-                        <td>${store.score.toLocaleString()}건</td>
-                    </tr>
                 </table>
             `;
 
-            // 닫기 버튼 클릭 리스너 연결
+            // 닫기 버튼 클릭 핸들러
             popupEl.querySelector('.popup-close-btn').onclick = function() {
                 popupOverlay.setMap(null);
                 if (currentOpenedOverlay === popupOverlay) {
