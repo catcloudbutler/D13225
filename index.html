@@ -71,38 +71,48 @@
         #map { width: 100%; height: 420px; border-radius: 6px; border: 1px solid #d1d5db; }
 
         /*********************************************************************
-         * 🎯 마커 클릭 시 나타나는 표 형태 말풍선 스타일 최적화 (z-index 추가)
+         * 🎯 [업데이트] 좌우 스크롤 차단 및 한눈에 보기 최적화 말풍선 디자인
          *********************************************************************/
-        .popup-wrap {
+        .custom-iw-container {
             background: #ffffff;
-            border: 1px solid #cbd5e1;
+            border: 2px solid #1e293b;
+            border-radius: 12px;
+            padding: 10px 12px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            border-radius: 4px;
-            padding: 4px;
-            z-index: 9999;
+            width: 245px;          /* 폭을 모바일 한 화면에 딱 들어오게 고정 */
+            max-height: 240px;     /* 초과 시 상하 스크롤만 허용 */
+            overflow-y: auto;
+            overflow-x: hidden;    /* 좌우 스크롤 절대 발생 방지 */
+            box-sizing: border-box;
         }
-        .popup-info-table {
-            border-collapse: collapse;
+        .popup-store-block {
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed #cbd5e1;
+        }
+        .popup-store-block:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+        
+        /* 📱 좌우 삐져나감 방지용 가로 한눈에 보기 전용 텍스트 열 */
+        .popup-item-row {
+            display: flex;
             font-size: 12px;
-            font-family: 'Malgun Gothic', sans-serif;
-            min-width: 200px;
-            background: #ffffff;
+            line-height: 1.5;
+            margin-bottom: 2px;
         }
-        .popup-info-table th {
-            background-color: #f8fafc;
-            color: #475569;
+        .popup-item-row .label {
+            width: 65px;
             font-weight: bold;
-            padding: 6px 10px;
-            border: 1px solid #e2e8f0;
-            text-align: left;
-            width: 75px;
+            color: #475569;
+            flex-shrink: 0;
         }
-        .popup-info-table td {
-            padding: 6px 10px;
-            border: 1px solid #e2e8f0;
+        .popup-item-row .value {
             color: #0f172a;
-            text-align: left;
-            font-weight: 600;
+            word-break: break-all;
+            white-space: normal;
         }
 
         /* 🎨 미니멀 커스텀 지도 마커 디자인 */
@@ -181,11 +191,28 @@
         .info-status { font-size: 13px; font-weight: bold; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
         .total-count { color: #2563eb; }
 
+        /* 🎯 [필수 제거] 카카오맵 기본 하얀색 말풍선의 기본 마진/패딩 박스 강제 초기화 */
+        .kakaomap-iw-wrapper { padding: 0; margin: -5px -10px; background: transparent; }
+        .kakaomap-iw-wrapper * { box-sizing: border-box; }
+
         @media (max-width: 768px) {
             body { padding: 8px; }
             .container { padding: 12px; border-radius: 8px; }
             h2 { font-size: 17px; margin-bottom: 15px; }
             
+            /* 모바일 말풍선 폭 초소형 고정 */
+            .custom-iw-container {
+                width: 215px !important;
+                max-height: 200px !important;
+                padding: 8px 10px !important;
+            }
+            .popup-item-row {
+                font-size: 11px !important;
+            }
+            .popup-item-row .label {
+                width: 60px !important;
+            }
+
             .location-search-box { gap: 6px; }
             .location-search-input { width: 100%; flex: none; }
             .btn-location-search { flex: 1; text-align: center; }
@@ -311,7 +338,7 @@ let centerMarker = null;
 
 let storeCustomOverlays = []; 
 let currentOpenedInfoWindow = null; 
-let dragTimeout = null; // 🛠️ 지도 드래그 과부하 방지 타이머 추가
+let dragTimeout = null; 
 
 function checkAdminAccess() {
     const pwInput = document.getElementById('admin-password');
@@ -356,7 +383,6 @@ function initMap() {
     });
     centerMarker.setMap(map);
 
-    /* 🛠️ 지도가 깨지거나 안 나오는 부분 개선: 드래그가 끝날 때 0.3초간 멈춤 검증 후 최소 처리 */
     kakao.maps.event.addListener(map, 'dragend', function() {
         if(dragTimeout) clearTimeout(dragTimeout);
         dragTimeout = setTimeout(function() {
@@ -409,11 +435,7 @@ function searchNewLocation() {
     });
 }
 
-/*********************************************************************
- * 🎯 내 위치 주변 실제 최단거리 80개 추출 및 커스텀 오버레이/말풍선 정상 렌더링
- *********************************************************************/
 function displayStoreMarkersOnMap(data) {
-    // 기존 오버레이(마커) 삭제
     storeCustomOverlays.forEach(overlay => overlay.setMap(null));
     storeCustomOverlays = [];
     if (currentOpenedInfoWindow) {
@@ -423,25 +445,55 @@ function displayStoreMarkersOnMap(data) {
 
     if (!map || data.length === 0) return;
 
-    // 1. 위도, 경도 좌표가 유효하게 변환된 데이터만 먼저 필터링
     const validStores = data.filter(item => item.lat > 0 && item.lng > 0);
 
-    // 2. 해당 유효 매장들을 거리 순으로 한 번 더 명확하게 정렬
-    validStores.sort((a, b) => a.distance - b.distance);
+    const locationGroups = {};
+    validStores.forEach(store => {
+        const coordKey = `${store.lat.toFixed(5)}_${store.lng.toFixed(5)}`;
+        if (!locationGroups[coordKey]) {
+            locationGroups[coordKey] = {
+                lat: store.lat,
+                lng: store.lng,
+                stores: []
+            };
+        }
+        locationGroups[coordKey].stores.push(store);
+    });
 
-    // 3. 내 근처 진짜 최단거리 매장 상위 80개 추출
-    const nearStores = validStores.slice(0, 80);
+    const groupKeys = Object.keys(locationGroups).slice(0, 80);
 
-    nearStores.forEach(store => {
-        const markerPosition = new kakao.maps.LatLng(store.lat, store.lng);
-        
-        const isGJ = store.agency.includes('광장대리점');
-        const isPSM = store.agency.toUpperCase().includes('PS&M') || store.agency.includes('피에스앤마케팅');
+    groupKeys.forEach(key => {
+        const group = locationGroups[key];
+        const markerPosition = new kakao.maps.LatLng(group.lat, group.lng);
+
+        const mergedStoreMap = {};
+        group.stores.forEach(s => {
+            const nameKey = s.name.trim();
+            if (!mergedStoreMap[nameKey]) {
+                mergedStoreMap[nameKey] = {
+                    name: nameKey,
+                    agencies: [],
+                    types: [],
+                    totalScore: 0
+                };
+            }
+            if (s.agency && !mergedStoreMap[nameKey].agencies.includes(s.agency)) {
+                mergedStoreMap[nameKey].agencies.push(s.agency);
+            }
+            if (s.type && !mergedStoreMap[nameKey].types.includes(s.type)) {
+                mergedStoreMap[nameKey].types.push(s.type);
+            }
+            mergedStoreMap[nameKey].totalScore += s.score;
+        });
+
+        const leadStore = group.stores[0];
+        const isGJ = leadStore.agency.includes('광장대리점');
+        const isPSM = leadStore.agency.toUpperCase().includes('PS&M') || leadStore.agency.includes('피에스앤마케팅');
         
         let pinClass = "pin-normal";
-        if (isGJ) { pinClass = "pin-gj"; } 
-        else if (isPSM && store.type === 'PS_전속') { pinClass = "pin-psm-exclusive"; } 
-        else if (isPSM && store.type === '중복점') { pinClass = "pin-psm-duplicate"; }
+        if (isGJ) pinClass = "pin-gj";
+        else if (isPSM && leadStore.type === 'PS_전속') pinClass = "pin-psm-exclusive";
+        else if (isPSM && leadStore.type === '중복점') pinClass = "pin-psm-duplicate";
 
         const contentEl = document.createElement('div');
         contentEl.className = `custom-pin-marker ${pinClass}`;
@@ -456,47 +508,53 @@ function displayStoreMarkersOnMap(data) {
         customOverlay.setMap(map);
         storeCustomOverlays.push(customOverlay);
 
-        // 정밀 디자인 표 템플릿 (P코드 포함 안전한 바인딩)
+        /* 📱 [업데이트] 테이블 구조 제거 -> 가로 넘침 없는 Flex 구조로 한눈에 매핑 */
+        let innerHTMLBlocks = '';
+        Object.values(mergedStoreMap).forEach(merged => {
+            innerHTMLBlocks += `
+                <div class="popup-store-block">
+                    <div class="popup-item-row">
+                        <span class="label">거래처명</span>
+                        <span class="value" style="font-weight:bold; color:#1e293b;">${merged.name}</span>
+                    </div>
+                    <div class="popup-item-row">
+                        <span class="label">대리점명</span>
+                        <span class="value">${merged.agencies.join(', ') || '정보없음'}</span>
+                    </div>
+                    <div class="popup-item-row">
+                        <span class="label">중복여부</span>
+                        <span class="value">${merged.types.join(', ')}</span>
+                    </div>
+                    <div class="popup-item-row">
+                        <span class="label">대리점실적</span>
+                        <span class="value" style="font-weight:bold; color:#2563eb;">${merged.totalScore.toLocaleString()}건</span>
+                    </div>
+                </div>
+            `;
+        });
+
         const iwContent = `
-            <div class="popup-wrap">
-                <table class="popup-info-table">
-                    <tr>
-                        <th>P코드</th>
-                        <td style="color:#2563eb;">${store.pcode || '정보없음'}</td>
-                    </tr>
-                    <tr>
-                        <th>판매점 명</th>
-                        <td>${store.name}</td>
-                    </tr>
-                    <tr>
-                        <th>대리점 명</th>
-                        <td>${store.agency || '정보없음'}</td>
-                    </tr>
-                    <tr>
-                        <th>중복여부</th>
-                        <td>${store.type}</td>
-                    </tr>
-                    <tr>
-                        <th>대리점실적</th>
-                        <td>${store.score.toLocaleString()}건</td>
-                    </tr>
-                </table>
+            <div class="kakaomap-iw-wrapper">
+                <div class="custom-iw-container">
+                    ${innerHTMLBlocks}
+                </div>
             </div>
         `;
 
-        // 가시성 확보 및 깔끔한 오버레이 연동을 위해 인포윈도우 객체 구성
         const infowindow = new kakao.maps.InfoWindow({ 
             content: iwContent,
             removable: true,
             disableAutoPan: false
         });
 
-        // 🛠️ 마커 클릭 시 기존 열려있던 말풍선은 닫고, 현재 판매점 말풍선을 확실하게 띄우도록 이벤트 재설정
+        // 🎯 [핵심 기능] 클릭하면 지도가 해당 핀의 정중앙 위치로 순간이동하여 한눈에 정렬됨
         contentEl.addEventListener('click', function() {
-            if (currentOpenedInfoWindow) {
-                currentOpenedInfoWindow.close();
-            }
-            infowindow.open(map, customOverlay);
+            if (currentOpenedInfoWindow) currentOpenedInfoWindow.close();
+            
+            map.panTo(markerPosition); // 부드럽게 중심 이동 시키기
+            
+            infowindow.setPosition(markerPosition);
+            infowindow.open(map);
             currentOpenedInfoWindow = infowindow;
         });
     });
