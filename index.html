@@ -71,23 +71,24 @@
         #map { width: 100%; height: 420px; border-radius: 6px; border: 1px solid #d1d5db; }
 
         /*********************************************************************
-         * 🎯 [첫 번째 사진 반영] 말풍선(CustomOverlay) 크기 축소 및 정돈
+         * 🎯 [개선] 가로 스크롤 없는 초밀착 한눈에 말풍선(CustomOverlay) 디자인
          *********************************************************************/
         .popup-wrap {
             background: #ffffff;
-            border: 1px solid #cbd5e1;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-            border-radius: 8px;
-            padding: 8px;
+            border: 1px solid #94a3b8;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2), 0 8px 10px -6px rgba(0,0,0,0.2);
+            border-radius: 10px;
+            padding: 8px 10px 10px 10px;
             position: absolute;
-            bottom: 42px; /* 마커 바투 위에 안착하도록 세밀 보정 */
+            bottom: 42px; /* 마커 바로 위에 밀착 */
             left: 50%;
             transform: translateX(-50%);
-            z-index: 100;
-            width: 220px; /* 기존 250px -> 220px 축소로 한눈에 보임 */
+            z-index: 1000;
+            width: 250px; /* 고정 크기로 스크롤 완벽 예방 */
+            box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 6px;
         }
         /* 말풍선 꼬리표 */
         .popup-wrap::after {
@@ -102,59 +103,94 @@
             display: block;
             width: 0;
         }
-        /* 닫기 버튼 크기 최적화 */
         .popup-header {
             display: flex;
-            justify-content: flex-end;
-            margin-bottom: 2px;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #f1f5f9;
+            padding-bottom: 4px;
+        }
+        .popup-title {
+            font-size: 10px;
+            font-weight: 800;
+            color: #64748b;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
+            max-width: 200px;
         }
         .popup-close-btn {
             cursor: pointer;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: bold;
             color: #94a3b8;
             border: none;
             background: none;
             line-height: 1;
-            padding: 2px;
+            padding: 0 4px;
         }
         .popup-close-btn:hover {
-            color: #475569;
-        }
-        .popup-info-table {
-            border-collapse: collapse;
-            font-size: 11px;
-            font-family: 'Malgun Gothic', sans-serif;
-            width: 100%;
-            background: #ffffff;
-        }
-        .popup-info-table th {
-            background-color: #f8fafc;
-            color: #64748b;
-            font-weight: bold;
-            padding: 4px 6px;
-            border: 1px solid #e2e8f0;
-            text-align: left;
-            width: 65px;
-            vertical-align: middle;
-        }
-        .popup-info-table td {
-            padding: 4px 6px;
-            border: 1px solid #e2e8f0;
             color: #0f172a;
-            text-align: left;
+        }
+
+        /* 거래처별 리스트 박스 */
+        .popup-store-card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 6px;
+            font-size: 11px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .popup-store-name {
+            font-weight: bold;
+            color: #1e293b;
+            font-size: 12px;
+            border-bottom: 1px solid #cbd5e1;
+            padding-bottom: 2px;
+            margin-bottom: 2px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .popup-store-pcode {
+            font-size: 10px;
+            color: #2563eb;
             font-weight: 600;
-            vertical-align: middle;
-            word-break: break-all;
         }
-        /* 중복 대리점 리스트를 구분하는 스타일 */
-        .popup-agency-item {
-            padding: 2px 0;
-            border-bottom: 1px dashed #e2e8f0;
+        .popup-agency-title {
+            font-weight: bold;
+            color: #475569;
+            margin-top: 2px;
         }
-        .popup-agency-item:last-child {
-            border-bottom: none;
-            padding-bottom: 0;
+        .popup-agency-list {
+            margin: 0;
+            padding-left: 8px;
+            list-style-type: none;
+            color: #334155;
+            font-size: 10.5px;
+        }
+        .popup-agency-list li {
+            position: relative;
+            padding-left: 8px;
+            margin-bottom: 1px;
+        }
+        .popup-agency-list li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #64748b;
+        }
+        .popup-total-score {
+            text-align: right;
+            font-weight: 800;
+            color: #16a34a;
+            font-size: 10.5px;
+            margin-top: 2px;
+            border-top: 1px dashed #e2e8f0;
+            padding-top: 2px;
         }
 
         /* 🎨 미니멀 커스텀 지도 마커 디자인 */
@@ -234,7 +270,7 @@
         .total-count { color: #2563eb; }
 
         /*********************************************************************
-         * 📱 [두 번째 사진 반영] 모바일 전용 반응형 미세 웹뷰 레이아웃 최적화
+         * 📱 모바일 전용 반응형 미세 웹뷰 레이아웃 최적화
          *********************************************************************/
         @media (max-width: 768px) {
             body { padding: 8px; }
@@ -284,7 +320,7 @@
             th, td { padding: 6px 4px; }
             .badge { font-size: 9.5px; padding: 2px 4px; }
             .distance-tag { font-size: 9.5px; padding: 1px 4px; }
-            #map { height: 280px; } /* 모바일에서 겹침 방지 및 높이 조절 */
+            #map { height: 280px; }
         }
     </style>
 </head>
@@ -493,10 +529,9 @@ function searchNewLocation() {
 }
 
 /*********************************************************************
- * 🎯 [첫 번째 사진 반영] 동일 P코드 복수 대리점 자동 그룹 통합 및 렌더링
+ * 🎯 [기능 업그레이드] 주소 & 거래처명 기준 다중 그룹화 및 대리점 실적 합계 표출
  *********************************************************************/
 function displayStoreMarkersOnMap(data) {
-    // 기존 마커(오버레이)들 지도에서 제거
     storeCustomOverlays.forEach(overlay => overlay.setMap(null));
     storeCustomOverlays = [];
     if (currentOpenedOverlay) {
@@ -506,31 +541,36 @@ function displayStoreMarkersOnMap(data) {
 
     if (!map || data.length === 0) return;
 
-    // 1. 유효 좌표 매장 필터링 및 고유 마커 위치(P코드 기준) 설정
+    // 1. 유효한 위도/경도를 가진 데이터 추출
     const validStores = data.filter(item => item.lat > 0 && item.lng > 0);
     validStores.sort((a, b) => a.distance - b.distance);
-    
-    // 2. 고유한 P코드 기준으로 첫 번째 매장 데이터를 대표 마커 데이터로 선정
-    const uniquePcodeMap = new Map();
+
+    // 2. 같은 상세주소(지번/도로명 기준 그룹화)를 사용하는 매장 그룹 생성
+    const addressGroups = new Map();
     validStores.forEach(store => {
-        if (!uniquePcodeMap.has(store.pcode)) {
-            uniquePcodeMap.set(store.pcode, store);
+        const fullAddr = `${store.sido} ${store.sigungu} ${store.address}`.trim();
+        if (!addressGroups.has(fullAddr)) {
+            addressGroups.set(fullAddr, []);
         }
+        addressGroups.get(fullAddr).push(store);
     });
 
-    // 3. 지도에 표출할 매장 리스트 (상위 80개 고유 P코드 매장)
-    const nearStores = Array.from(uniquePcodeMap.values()).slice(0, 80);
+    // 3. 상위 80개의 고유 주소지만 지도에 표시 (성능 및 시각적 한계 보완)
+    const uniqueAddresses = Array.from(addressGroups.keys()).slice(0, 80);
 
-    nearStores.forEach(store => {
-        const markerPosition = new kakao.maps.LatLng(store.lat, store.lng);
-        
-        const isGJ = store.agency.includes('광장대리점');
-        const isPSM = store.agency.toUpperCase().includes('PS&M') || store.agency.includes('피에스앤마케팅');
+    uniqueAddresses.forEach(address => {
+        const storesAtAddress = addressGroups.get(address);
+        const representativeStore = storesAtAddress[0]; // 대표 좌표 획득
+        const markerPosition = new kakao.maps.LatLng(representativeStore.lat, representativeStore.lng);
+
+        // 시그니처 핀 마커 색상 지정 (대표 마커 기준)
+        const isGJ = storesAtAddress.some(s => s.agency.includes('광장대리점'));
+        const isPSM = storesAtAddress.some(s => s.agency.toUpperCase().includes('PS&M') || s.agency.includes('피에스앤마케팅'));
         
         let pinClass = "pin-normal";
         if (isGJ) { pinClass = "pin-gj"; } 
-        else if (isPSM && store.type === 'PS_전속') { pinClass = "pin-psm-exclusive"; } 
-        else if (isPSM && store.type === '중복점') { pinClass = "pin-psm-duplicate"; }
+        else if (isPSM && storesAtAddress.some(s => s.type === 'PS_전속')) { pinClass = "pin-psm-exclusive"; } 
+        else if (isPSM && storesAtAddress.some(s => s.type === '중복점')) { pinClass = "pin-psm-duplicate"; }
 
         const contentEl = document.createElement('div');
         contentEl.className = `custom-pin-marker ${pinClass}`;
@@ -545,56 +585,71 @@ function displayStoreMarkersOnMap(data) {
         customOverlay.setMap(map);
         storeCustomOverlays.push(customOverlay);
 
-        // 🛠️ 마커 클릭 리스너 등록
+        // 마커 클릭 리스너 등록
         contentEl.addEventListener('click', function() {
             if (currentOpenedOverlay) {
                 currentOpenedOverlay.setMap(null);
             }
 
-            // [핵심 로직] 동일 P코드를 사용하는 전체 데이터 필터링하여 대리점 리스트 병합
-            const matchingAgencies = csvData.filter(item => item.pcode === store.pcode);
-            
-            let agencyListHtml = '';
-            if (matchingAgencies.length > 1) {
-                // 여러 개 대리점이 있는 경우 줄바꿈 리스트로 포맷팅
-                agencyListHtml = matchingAgencies.map(m => `
-                    <div class="popup-agency-item">
-                        • ${m.agency} (${m.score.toLocaleString()}건)
-                    </div>
-                `).join('');
-            } else {
-                // 단일 대리점인 경우 일반 표기
-                agencyListHtml = `${store.agency || '정보없음'} (${store.score.toLocaleString()}건)`;
-            }
+            // [동적 그룹화 로직]: 주소가 같은 데이터 중 '거래처명(name)'을 기준으로 중복 합산 수행
+            const nameGroups = new Map();
+            storesAtAddress.forEach(store => {
+                if (!nameGroups.has(store.name)) {
+                    nameGroups.set(store.name, {
+                        pcode: store.pcode,
+                        type: store.type,
+                        agencies: [] // { agencyName, agencyScore } 목록
+                    });
+                }
+                const currentGroup = nameGroups.get(store.name);
+                // 해당 대리점이 목록에 존재하지 않는 경우 신규 등록
+                if (!currentGroup.agencies.some(a => a.name === store.agency)) {
+                    currentGroup.agencies.push({
+                        name: store.agency,
+                        score: store.score
+                    });
+                }
+            });
 
             const popupEl = document.createElement('div');
             popupEl.className = 'popup-wrap';
 
-            popupEl.innerHTML = `
+            // 상단 닫기 X 헤더 영역
+            let bodyHtml = `
                 <div class="popup-header">
+                    <span class="popup-title">📍 ${address}</span>
                     <button class="popup-close-btn">✕</button>
                 </div>
-                <table class="popup-info-table">
-                    <tr>
-                        <th>P코드</th>
-                        <td style="color:#2563eb; font-weight: bold;">${store.pcode || '정보없음'}</td>
-                    </tr>
-                    <tr>
-                        <th>판매점 명</th>
-                        <td>${store.name}</td>
-                    </tr>
-                    <tr>
-                        <th>대리점 실적</th>
-                        <td>${agencyListHtml}</td>
-                    </tr>
-                    <tr>
-                        <th>중복여부</th>
-                        <td>${store.type}</td>
-                    </tr>
-                </table>
             `;
 
-            // 닫기 버튼 클릭 핸들러
+            // 거래처별 구조화된 카드 박스 생성
+            nameGroups.forEach((info, storeName) => {
+                const totalScore = info.agencies.reduce((sum, item) => sum + item.score, 0);
+                
+                let agencyRows = info.agencies.map(a => `
+                    <li>${a.name} (${a.score.toLocaleString()}건)</li>
+                `).join('');
+
+                bodyHtml += `
+                    <div class="popup-store-card">
+                        <div class="popup-store-name">
+                            <span>🏢 ${storeName}</span>
+                            <span class="popup-store-pcode">${info.pcode}</span>
+                        </div>
+                        <div class="popup-agency-title">📋 취급 대리점 목록:</div>
+                        <ul class="popup-agency-list">
+                            ${agencyRows}
+                        </ul>
+                        <div class="popup-total-score">
+                            대리점 실적 합계: ${totalScore.toLocaleString()}건
+                        </div>
+                    </div>
+                `;
+            });
+
+            popupEl.innerHTML = bodyHtml;
+
+            // X 닫기 버튼 이벤트 작동
             popupEl.querySelector('.popup-close-btn').onclick = function() {
                 popupOverlay.setMap(null);
                 if (currentOpenedOverlay === popupOverlay) {
