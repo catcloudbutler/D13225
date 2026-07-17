@@ -75,10 +75,10 @@
          *********************************************************************/
         .custom-iw-container {
             background: #ffffff;
-            border: 2px solid #1e293b;
-            border-radius: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
             padding: 10px 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
             width: 245px;          /* 폭을 모바일 한 화면에 딱 들어오게 고정 */
             max-height: 240px;     /* 초과 시 상하 스크롤만 허용 */
             overflow-y: auto;
@@ -114,27 +114,6 @@
             word-break: break-all;
             white-space: normal;
         }
-
-        /* 🎨 미니멀 커스텀 지도 마커 디자인 */
-        .custom-pin-marker {
-            position: relative;
-            width: 24px;   
-            height: 24px;  
-            border-radius: 50% 50% 50% 0;
-            transform: rotate(-45deg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: -1px 2px 4px rgba(0,0,0,0.3);
-            cursor: pointer;
-            border: 2px solid #ffffff;
-            box-sizing: border-box;
-            z-index: 5;
-        }
-        .pin-gj { background-color: #153D64 !important; }
-        .pin-psm-exclusive { background-color: #FF0000 !important; }
-        .pin-psm-duplicate { background-color: #FFFF00 !important; border: 2px solid #cbd5e1; }
-        .pin-normal { background-color: #2563EB !important; }
 
         .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px; margin-top: 15px; }
         .filter-group { display: flex; flex-direction: column; position: relative; }
@@ -192,8 +171,14 @@
         .total-count { color: #2563eb; }
 
         /* 카카오맵 내장 오버레이 박스 강제 초기화 */
-        .kakaomap-iw-wrapper { padding: 0; margin: -5px -10px; background: transparent; }
+        .kakaomap-iw-wrapper { padding: 0; background: transparent; }
         .kakaomap-iw-wrapper * { box-sizing: border-box; }
+
+        /* 가벼운 인포윈도우 스타일 보정 */
+        .custom-iw-outer {
+            border: none !important;
+            background: none !important;
+        }
 
         @media (max-width: 768px) {
             body { padding: 8px; }
@@ -336,7 +321,7 @@ let placesService = null;
 let map = null;
 let centerMarker = null;
 
-let storeCustomOverlays = []; 
+let storeMarkers = []; 
 let currentOpenedInfoWindow = null; 
 let dragTimeout = null; 
 
@@ -364,7 +349,7 @@ function initMap() {
 
     const mapOption = {
         center: new kakao.maps.LatLng(userCoords.lat, userCoords.lng),
-        level: 5
+        level: 3 // 🎯 [수정] 5에서 3으로 변경하여 더욱 상세하고 좁은 범위를 확대하여 표시
     };
 
     map = new kakao.maps.Map(mapContainer, mapOption);
@@ -436,8 +421,9 @@ function searchNewLocation() {
 }
 
 function displayStoreMarkersOnMap(data) {
-    storeCustomOverlays.forEach(overlay => overlay.setMap(null));
-    storeCustomOverlays = [];
+    // 기존 마커 제거
+    storeMarkers.forEach(marker => marker.setMap(null));
+    storeMarkers = [];
     if (currentOpenedInfoWindow) {
         currentOpenedInfoWindow.close();
         currentOpenedInfoWindow = null;
@@ -460,7 +446,6 @@ function displayStoreMarkersOnMap(data) {
         locationGroups[coordKey].stores.push(store);
     });
 
-    /* 🎯 [수정] 상위 제한 개수를 200개로 확장 */
     const groupKeys = Object.keys(locationGroups).slice(0, 200);
 
     groupKeys.forEach(key => {
@@ -487,27 +472,14 @@ function displayStoreMarkersOnMap(data) {
             mergedStoreMap[nameKey].totalScore += s.score;
         });
 
-        const leadStore = group.stores[0];
-        const isGJ = leadStore.agency.includes('광장대리점');
-        const isPSM = leadStore.agency.toUpperCase().includes('PS&M') || leadStore.agency.includes('피에스앤마케팅');
-        
-        let pinClass = "pin-normal";
-        if (isGJ) pinClass = "pin-gj";
-        else if (isPSM && leadStore.type === 'PS_전속') pinClass = "pin-psm-exclusive";
-        else if (isPSM && leadStore.type === '중복점') pinClass = "pin-psm-duplicate";
-
-        const contentEl = document.createElement('div');
-        contentEl.className = `custom-pin-marker ${pinClass}`;
-
-        const customOverlay = new kakao.maps.CustomOverlay({
+        // 🎯 [수정] 복잡한 이미지 로직을 취소하고 깔끔하게 카카오 API 기본 마커로 사용합니다.
+        const marker = new kakao.maps.Marker({
             position: markerPosition,
-            content: contentEl,
-            yAnchor: 1.0, 
-            xAnchor: 0.5  
+            clickable: true
         });
 
-        customOverlay.setMap(map);
-        storeCustomOverlays.push(customOverlay);
+        marker.setMap(map);
+        storeMarkers.push(marker);
 
         let innerHTMLBlocks = '';
         Object.values(mergedStoreMap).forEach(merged => {
@@ -547,13 +519,12 @@ function displayStoreMarkersOnMap(data) {
             disableAutoPan: false
         });
 
-        contentEl.addEventListener('click', function() {
+        kakao.maps.event.addListener(marker, 'click', function() {
             if (currentOpenedInfoWindow) currentOpenedInfoWindow.close();
             
             map.panTo(markerPosition); 
             
-            infowindow.setPosition(markerPosition);
-            infowindow.open(map);
+            infowindow.open(map, marker);
             currentOpenedInfoWindow = infowindow;
         });
     });
@@ -850,7 +821,6 @@ function renderTable(data) {
     data.sort((a, b) => a.distance - b.distance);
     displayStoreMarkersOnMap(data);
 
-    /* 🎯 [수정] 테이블에 렌더링할 개수 상한을 200개로 변경 */
     const limitData = data.slice(0, 200); 
     limitData.forEach(item => {
         const fullAddress = `${item.sido} ${item.sigungu} ${item.address}`.trim();
@@ -899,7 +869,6 @@ function renderTable(data) {
         `;
     });
 
-    /* 🎯 [수정] 안내 문구 한도 조건 또한 200개로 변경 */
     if (data.length > 200) {
         tbody.innerHTML += `<tr><td colspan="8" style="padding:15px; background:#f3f4f6; color:#4b5563; font-weight:bold;">⚠️ 데이터가 너무 많아 상위 200개만 화면에 표시 중입니다. 필터를 이용해 범위를 좁혀주세요.</td></tr>`;
     }
