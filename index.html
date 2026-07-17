@@ -56,7 +56,7 @@
         #csv-file { display: none; }
 
         /* 지도 및 내 위치 검색 영역 스타일 */
-        .map-section { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 15px; position: relative; }
+        .map-section { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 15px; }
         .map-title { font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #374151; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         
         .location-search-box { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; width: 100%; }
@@ -68,188 +68,73 @@
         .btn-gps:hover { background-color: #6d28d9; }
         .top-gps-msg { font-size: 12px; font-weight: bold; color: #6b21a8; margin-left: 4px; display: inline-block; white-space: nowrap; }
 
-        /* 🗺️ 지도 및 수동 갱신 버튼 컨테이너 */
-        .map-container-relative { position: relative; width: 100%; }
         #map { width: 100%; height: 420px; border-radius: 6px; border: 1px solid #d1d5db; }
 
-        /* 🔄 [핵심 추가] 지도 내 위치 재검색 수동 버튼 */
-        .btn-map-refresh {
-            position: absolute;
-            top: 15px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-            background-color: #2563eb;
-            color: white;
-            border: none;
-            padding: 10px 18px;
-            border-radius: 30px;
-            font-size: 13px;
-            font-weight: bold;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            cursor: pointer;
-            display: none; /* 드래그할 때만 동적으로 나타남 */
-            align-items: center;
-            gap: 6px;
-            transition: background-color 0.2s, transform 0.1s;
-        }
-        .btn-map-refresh:hover {
-            background-color: #1d4ed8;
-        }
-        .btn-map-refresh:active {
-            transform: translateX(-50%) scale(0.97);
-        }
-
-        /* 말풍선 디자인 */
-        .popup-wrap {
+        /*********************************************************************
+         * 🎯 좌우 스크롤 차단 및 한눈에 보기 최적화 말풍선 디자인
+         *********************************************************************/
+        .custom-iw-container {
             background: #ffffff;
-            border: 2px solid #3b82f6;
-            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.25), 0 8px 10px -6px rgba(0,0,0,0.25);
+            border: 2px solid #1e293b;
             border-radius: 12px;
-            padding: 10px;
-            position: absolute;
-            bottom: 45px; 
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1010;
-            width: 270px; 
+            padding: 10px 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            width: 245px;          /* 폭을 모바일 한 화면에 딱 들어오게 고정 */
+            max-height: 240px;     /* 초과 시 상하 스크롤만 허용 */
+            overflow-y: auto;
+            overflow-x: hidden;    /* 좌우 스크롤 절대 발생 방지 */
             box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
         }
-        .popup-wrap::after {
-            content: '';
-            position: absolute;
-            bottom: -10px;
-            left: 50%;
-            transform: translateX(-50%);
-            border-width: 10px 10px 0;
-            border-style: solid;
-            border-color: #3b82f6 transparent;
-            display: block;
-            width: 0;
+        .popup-store-block {
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed #cbd5e1;
         }
-        .popup-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 6px;
-            flex-shrink: 0;
-        }
-        .popup-title {
-            font-size: 11px;
-            font-weight: 800;
-            color: #1e293b;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            overflow: hidden;
-            max-width: 220px;
-        }
-        .popup-close-btn {
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-            color: #94a3b8;
-            border: none;
-            background: none;
-            line-height: 1;
-            padding: 0 2px;
-        }
-        .popup-close-btn:hover {
-            color: #ef4444;
-        }
-
-        .popup-scroll-container {
-            max-height: 240px; 
-            overflow-y: auto;  
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            padding-right: 4px;
-            -webkit-overflow-scrolling: touch; 
-        }
-
-        .popup-scroll-container::-webkit-scrollbar {
-            width: 6px;
-        }
-        .popup-scroll-container::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 3px;
-        }
-        .popup-scroll-container::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 3px;
-        }
-        .popup-scroll-container::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-
-        .popup-store-card {
-            background-color: #f8fafc;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            padding: 8px;
-            font-size: 11px;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-        .popup-store-name {
-            font-weight: bold;
-            color: #1e3a8a;
-            font-size: 12.5px;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 4px;
-            margin-bottom: 2px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .popup-store-pcode {
-            font-size: 10px;
-            color: #2563eb;
-            font-weight: 800;
-            background-color: #eff6ff;
-            padding: 1px 4px;
-            border-radius: 4px;
+        .popup-store-block:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
         }
         
-        .popup-duplicate-title {
-            font-weight: bold;
-            color: #475569;
-            margin-top: 1px;
-        }
-        .popup-agency-list {
-            margin: 0;
-            padding-left: 6px;
-            list-style-type: none;
-            color: #334155;
-            font-size: 11px;
-        }
-        .popup-agency-list li {
-            position: relative;
-            padding-left: 10px;
+        /* 📱 좌우 삐져나감 방지용 가로 한눈에 보기 전용 텍스트 열 */
+        .popup-item-row {
+            display: flex;
+            font-size: 12px;
+            line-height: 1.5;
             margin-bottom: 2px;
         }
-        .popup-agency-list li::before {
-            content: "•";
-            position: absolute;
-            left: 0;
-            color: #3b82f6;
+        .popup-item-row .label {
+            width: 65px;
             font-weight: bold;
+            color: #475569;
+            flex-shrink: 0;
         }
-        .popup-total-score {
-            text-align: right;
-            font-weight: 800;
-            color: #16a34a;
-            font-size: 11px;
-            margin-top: 4px;
-            border-top: 1px dashed #cbd5e1;
-            padding-top: 4px;
+        .popup-item-row .value {
+            color: #0f172a;
+            word-break: break-all;
+            white-space: normal;
         }
+
+        /* 🎨 미니멀 커스텀 지도 마커 디자인 */
+        .custom-pin-marker {
+            position: relative;
+            width: 24px;   
+            height: 24px;  
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: -1px 2px 4px rgba(0,0,0,0.3);
+            cursor: pointer;
+            border: 2px solid #ffffff;
+            box-sizing: border-box;
+            z-index: 5;
+        }
+        .pin-gj { background-color: #153D64 !important; }
+        .pin-psm-exclusive { background-color: #FF0000 !important; }
+        .pin-psm-duplicate { background-color: #FFFF00 !important; border: 2px solid #cbd5e1; }
+        .pin-normal { background-color: #2563EB !important; }
 
         .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px; margin-top: 15px; }
         .filter-group { display: flex; flex-direction: column; position: relative; }
@@ -306,38 +191,43 @@
         .info-status { font-size: 13px; font-weight: bold; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
         .total-count { color: #2563eb; }
 
+        /* 카카오맵 내장 오버레이 박스 강제 초기화 */
+        .kakaomap-iw-wrapper { padding: 0; margin: -5px -10px; background: transparent; }
+        .kakaomap-iw-wrapper * { box-sizing: border-box; }
+
         @media (max-width: 768px) {
             body { padding: 8px; }
             .container { padding: 12px; border-radius: 8px; }
-            h2 { font-size: 16px; margin-bottom: 12px; }
+            h2 { font-size: 17px; margin-bottom: 15px; }
             
-            .map-section { padding: 8px; margin-bottom: 10px; }
-            .location-search-box { gap: 4px; margin-bottom: 6px; }
-            .location-search-input { width: 100%; flex: none; padding: 6px 10px; font-size: 12px; }
-            .btn-location-search { flex: 1; padding: 6px 10px; font-size: 12px; text-align: center; }
-            .btn-gps { flex: 1; padding: 6px 10px; font-size: 12px; text-align: center; }
-            .top-gps-msg { display: block; width: 100%; margin-left: 0; margin-top: 2px; text-align: left; font-size: 10.5px; }
+            /* 모바일 말풍선 폭 초소형 고정 */
+            .custom-iw-container {
+                width: 215px !important;
+                max-height: 200px !important;
+                padding: 8px 10px !important;
+            }
+            .popup-item-row {
+                font-size: 11px !important;
+            }
+            .popup-item-row .label {
+                width: 60px !important;
+            }
+
+            .location-search-box { gap: 6px; }
+            .location-search-input { width: 100%; flex: none; }
+            .btn-location-search { flex: 1; text-align: center; }
+            .btn-gps { flex: 1; text-align: center; }
+            .top-gps-msg { display: block; width: 100%; margin-left: 0; margin-top: 4px; text-align: left; font-size: 11px; }
             
-            .filter-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; padding: 8px; margin-top: 8px; margin-bottom: 12px; }
-            .filter-group label { font-size: 11px; margin-bottom: 2px; }
-            .search-input { padding: 6px 8px; font-size: 12px; }
-            .btn-group { grid-column: span 2; margin-top: 3px; }
-            .btn-reset { padding: 7px; font-size: 12px; }
-            
-            .map-title { flex-direction: column; align-items: flex-start; gap: 4px; font-size: 12px; }
+            .filter-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 10px; }
+            .btn-group { grid-column: span 2; margin-top: 5px; }
+            .map-title { flex-direction: column; align-items: flex-start; gap: 6px; }
             .admin-pw-box { margin-left: 0; width: 100%; display: flex; justify-content: flex-start; }
-            .admin-pw-input { padding: 5px 8px; font-size: 11px; width: 100px; }
-            
-            table { font-size: 11px; min-width: 900px; } 
-            th, td { padding: 6px 4px; }
-            .badge { font-size: 9.5px; padding: 2px 4px; }
-            .distance-tag { font-size: 9.5px; padding: 1px 4px; }
-            #map { height: 280px; }
-            
-            .popup-wrap { width: 245px; }
-            .popup-scroll-container { max-height: 200px; }
-            
-            .btn-map-refresh { padding: 8px 14px; font-size: 11.5px; }
+            table { font-size: 12px; min-width: 1050px; } 
+            th, td { padding: 8px 5px; }
+            .badge { font-size: 10px; padding: 2px 4px; }
+            .distance-tag { font-size: 10px; padding: 1px 5px; }
+            #map { height: 320px; }
         }
     </style>
 </head>
@@ -379,11 +269,7 @@
             <span id="gps-msg" class="top-gps-msg">위치 신호를 탐색하고 있습니다...</span>
         </div>
         
-        <div class="map-container-relative">
-            <div id="map"></div>
-            <!-- 🔄 [최적화 추가] 지도 위에 동적으로 표시될 수동 업데이트 버튼 -->
-            <button id="btn-refresh" class="btn-map-refresh" onclick="onManualRefreshClick()">🔄 이 위치에서 재검색</button>
-        </div>
+        <div id="map"></div>
     </div>
 
     <div class="filter-grid">
@@ -450,9 +336,9 @@ let placesService = null;
 let map = null;
 let centerMarker = null;
 
-let storeMarkers = []; 
-let currentOpenedOverlay = null; 
-let dragTimeout = null; // 디바운싱 타이머용
+let storeCustomOverlays = []; 
+let currentOpenedInfoWindow = null; 
+let dragTimeout = null; 
 
 function checkAdminAccess() {
     const pwInput = document.getElementById('admin-password');
@@ -478,7 +364,7 @@ function initMap() {
 
     const mapOption = {
         center: new kakao.maps.LatLng(userCoords.lat, userCoords.lng),
-        level: 4
+        level: 5
     };
 
     map = new kakao.maps.Map(mapContainer, mapOption);
@@ -497,21 +383,12 @@ function initMap() {
     });
     centerMarker.setMap(map);
 
-    // 🔄 [최적화 적용] 지도가 멈추면(dragend) 연산을 하지 않고 버튼만 노출합니다. (디바운싱 시간 800ms로 조절)
     kakao.maps.event.addListener(map, 'dragend', function() {
         if(dragTimeout) clearTimeout(dragTimeout);
         dragTimeout = setTimeout(function() {
-            // 중심점 마커 위치만 즉각 옮겨주고, 화면에 '재검색 버튼'을 띄웁니다.
-            centerMarker.setPosition(map.getCenter());
-            document.getElementById('btn-refresh').style.display = 'flex';
-        }, 800); // 디바운싱 시간 800ms로 상향 조정
+            updateCenterCoordinates(map.getCenter(), `🎯 지도 중심점 기준으로 거리 보정됨`);
+        }, 300);
     });
-}
-
-// 🔄 [최적화 적용] 사용자가 버튼을 클릭해야만 비로소 거리 계산과 마커/테이블 리렌더링이 일어납니다.
-function onManualRefreshClick() {
-    document.getElementById('btn-refresh').style.display = 'none'; // 버튼 숨기기
-    updateCenterCoordinates(map.getCenter(), `🎯 지도 중심점 기준으로 거리 보정됨`);
 }
 
 function updateCenterCoordinates(latlng, message) {
@@ -523,7 +400,6 @@ function updateCenterCoordinates(latlng, message) {
     document.getElementById('gps-msg').textContent = message;
     document.getElementById('gps-msg').style.color = "#2563eb";
 
-    // 클릭 시점에만 연산 집중 실행!
     recalculateDistances();
     applyFilters();
 }
@@ -543,7 +419,6 @@ function searchNewLocation() {
             const moveLatLng = new kakao.maps.LatLng(firstResult.y, firstResult.x);
             
             map.setCenter(moveLatLng);
-            document.getElementById('btn-refresh').style.display = 'none'; // 자동 매칭되므로 버튼은 감춤
             updateCenterCoordinates(moveLatLng, `🔎 검색 위치 이동: ${firstResult.place_name}`);
         } else {
             geocoder.addressSearch(keyword, function(result, addressStatus) {
@@ -551,7 +426,6 @@ function searchNewLocation() {
                     const moveLatLng = new kakao.maps.LatLng(result[0].y, result[0].x);
                     
                     map.setCenter(moveLatLng);
-                    document.getElementById('btn-refresh').style.display = 'none'; // 자동 매칭되므로 버튼은 감춤
                     updateCenterCoordinates(moveLatLng, `🔎 검색 주소 이동: ${keyword}`);
                 } else {
                     alert('입력하신 장소나 주소를 찾을 수 없습니다. 정확히 입력해 주세요.');
@@ -561,162 +435,126 @@ function searchNewLocation() {
     });
 }
 
-/* 🚀 HTML 커스텀 오버레이 대신 가벼운 kakao.maps.Marker 적용 */
 function displayStoreMarkersOnMap(data) {
-    storeMarkers.forEach(marker => marker.setMap(null));
-    storeMarkers = [];
-    if (currentOpenedOverlay) {
-        currentOpenedOverlay.setMap(null);
-        currentOpenedOverlay = null;
+    storeCustomOverlays.forEach(overlay => overlay.setMap(null));
+    storeCustomOverlays = [];
+    if (currentOpenedInfoWindow) {
+        currentOpenedInfoWindow.close();
+        currentOpenedInfoWindow = null;
     }
 
     if (!map || data.length === 0) return;
 
     const validStores = data.filter(item => item.lat > 0 && item.lng > 0);
 
-    const coordGroups = new Map();
+    const locationGroups = {};
     validStores.forEach(store => {
         const coordKey = `${store.lat.toFixed(5)}_${store.lng.toFixed(5)}`;
-        if (!coordGroups.has(coordKey)) {
-            coordGroups.set(coordKey, []);
+        if (!locationGroups[coordKey]) {
+            locationGroups[coordKey] = {
+                lat: store.lat,
+                lng: store.lng,
+                stores: []
+            };
         }
-        coordGroups.get(coordKey).push(store);
+        locationGroups[coordKey].stores.push(store);
     });
 
-    const uniqueCoords = Array.from(coordGroups.keys()).slice(0, 150);
+    /* 🎯 [수정] 상위 제한 개수를 200개로 확장 */
+    const groupKeys = Object.keys(locationGroups).slice(0, 200);
 
-    uniqueCoords.forEach(coordKey => {
-        const storesAtCoord = coordGroups.get(coordKey);
-        const representativeStore = storesAtCoord[0]; 
-        const markerPosition = new kakao.maps.LatLng(representativeStore.lat, representativeStore.lng);
+    groupKeys.forEach(key => {
+        const group = locationGroups[key];
+        const markerPosition = new kakao.maps.LatLng(group.lat, group.lng);
 
-        const isGJ = storesAtCoord.some(s => s.agency.includes('광장대리점'));
-        const isPSM = storesAtCoord.some(s => s.agency.toUpperCase().includes('PS&M') || s.agency.includes('피에스앤마케팅'));
-        
-        // 🎨 카카오 기본 리소스를 활용한 경량 이미지 마커 이원화 설정
-        let markerImageUrl = 'https://t1.daumcdn.net/localimg/localimages/07/2012/img/marker_p.png'; // 일반 (파란색)
-        if (isGJ) { 
-            markerImageUrl = 'https://t1.daumcdn.net/localimg/localimages/07/2018/pc/img/marker_spot.png'; // 광장 (밤하늘색)
-        } else if (isPSM && storesAtCoord.some(s => s.type === 'PS_전속')) { 
-            markerImageUrl = 'https://t1.daumcdn.net/mapjsapi/images/marker.png'; // PS 전속 (빨간색)
-        } else if (isPSM && storesAtCoord.some(s => s.type === '중복점')) { 
-            markerImageUrl = 'https://t1.daumcdn.net/localimg/localimages/07/2012/img/marker_normal.png'; // 중복점 (노란색 계열)
-        }
-
-        const markerImage = new kakao.maps.MarkerImage(
-            markerImageUrl,
-            new kakao.maps.Size(26, 36),
-            { offset: new kakao.maps.Point(13, 36) }
-        );
-
-        const marker = new kakao.maps.Marker({
-            position: markerPosition,
-            image: markerImage
+        const mergedStoreMap = {};
+        group.stores.forEach(s => {
+            const nameKey = s.name.trim();
+            if (!mergedStoreMap[nameKey]) {
+                mergedStoreMap[nameKey] = {
+                    name: nameKey,
+                    agencies: [],
+                    types: [],
+                    totalScore: 0
+                };
+            }
+            if (s.agency && !mergedStoreMap[nameKey].agencies.includes(s.agency)) {
+                mergedStoreMap[nameKey].agencies.push(s.agency);
+            }
+            if (s.type && !mergedStoreMap[nameKey].types.includes(s.type)) {
+                mergedStoreMap[nameKey].types.push(s.type);
+            }
+            mergedStoreMap[nameKey].totalScore += s.score;
         });
 
-        marker.setMap(map);
-        storeMarkers.push(marker);
+        const leadStore = group.stores[0];
+        const isGJ = leadStore.agency.includes('광장대리점');
+        const isPSM = leadStore.agency.toUpperCase().includes('PS&M') || leadStore.agency.includes('피에스앤마케팅');
+        
+        let pinClass = "pin-normal";
+        if (isGJ) pinClass = "pin-gj";
+        else if (isPSM && leadStore.type === 'PS_전속') pinClass = "pin-psm-exclusive";
+        else if (isPSM && leadStore.type === '중복점') pinClass = "pin-psm-duplicate";
 
-        // 마커 클릭 시 정보창(CustomOverlay 말풍선) 표시 기능 연동
-        kakao.maps.event.addListener(marker, 'click', function() {
-            if (currentOpenedOverlay) {
-                currentOpenedOverlay.setMap(null);
-            }
+        const contentEl = document.createElement('div');
+        contentEl.className = `custom-pin-marker ${pinClass}`;
 
-            const repAddress = `${representativeStore.sido} ${representativeStore.sigungu} ${representativeStore.address}`.trim();
+        const customOverlay = new kakao.maps.CustomOverlay({
+            position: markerPosition,
+            content: contentEl,
+            yAnchor: 1.0, 
+            xAnchor: 0.5  
+        });
 
-            const storeNameMap = new Map();
-            storesAtCoord.forEach(store => {
-                const storeUniqueId = `${store.name}_${store.pcode}`;
-                if (!storeNameMap.has(storeUniqueId)) {
-                    storeNameMap.set(storeUniqueId, {
-                        name: store.name,
-                        pcode: store.pcode,
-                        type: store.type,
-                        agencies: [] 
-                    });
-                }
-                const currentObj = storeNameMap.get(storeUniqueId);
-                if (!currentObj.agencies.some(a => a.name === store.agency)) {
-                    currentObj.agencies.push({
-                        name: store.agency,
-                        score: store.score
-                    });
-                }
-            });
+        customOverlay.setMap(map);
+        storeCustomOverlays.push(customOverlay);
 
-            const popupEl = document.createElement('div');
-            popupEl.className = 'popup-wrap';
-
-            let bodyHtml = `
-                <div class="popup-header">
-                    <span class="popup-title">📍 ${repAddress}</span>
-                    <button class="popup-close-btn">✕</button>
-                </div>
-                <div class="popup-scroll-container">
-            `;
-
-            storeNameMap.forEach((info) => {
-                const totalScore = info.agencies.reduce((sum, item) => sum + item.score, 0);
-                
-                let agencyRows = info.agencies.map(a => `
-                    <li>${a.name} (${a.score.toLocaleString()}건)</li>
-                `).join('');
-
-                bodyHtml += `
-                    <div class="popup-store-card">
-                        <div class="popup-store-name">
-                            <span>🏢 ${info.name}</span>
-                            <span class="popup-store-pcode">${info.pcode}</span>
-                        </div>
-                        <div style="font-size: 10px; color: #475569; margin-bottom: 2px;">
-                            중복여부: <span class="badge" style="padding:1px 4px; font-size:9.5px; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155;">${info.type}</span>
-                        </div>
-                        <div class="popup-duplicate-title">📋 거래대리점명(실적):</div>
-                        <ul class="popup-agency-list">
-                            ${agencyRows}
-                        </ul>
-                        <div class="popup-total-score">
-                            실적 합계: ${totalScore.toLocaleString()}건
-                        </div>
+        let innerHTMLBlocks = '';
+        Object.values(mergedStoreMap).forEach(merged => {
+            innerHTMLBlocks += `
+                <div class="popup-store-block">
+                    <div class="popup-item-row">
+                        <span class="label">거래처명</span>
+                        <span class="value" style="font-weight:bold; color:#1e293b;">${merged.name}</span>
                     </div>
-                `;
-            });
+                    <div class="popup-item-row">
+                        <span class="label">대리점명</span>
+                        <span class="value">${merged.agencies.join(', ') || '정보없음'}</span>
+                    </div>
+                    <div class="popup-item-row">
+                        <span class="label">중복여부</span>
+                        <span class="value">${merged.types.join(', ')}</span>
+                    </div>
+                    <div class="popup-item-row">
+                        <span class="label">대리점실적</span>
+                        <span class="value" style="font-weight:bold; color:#2563eb;">${merged.totalScore.toLocaleString()}건</span>
+                    </div>
+                </div>
+            `;
+        });
 
-            bodyHtml += `</div>`;
-            popupEl.innerHTML = bodyHtml;
+        const iwContent = `
+            <div class="kakaomap-iw-wrapper">
+                <div class="custom-iw-container">
+                    ${innerHTMLBlocks}
+                </div>
+            </div>
+        `;
 
-            popupEl.querySelector('.popup-close-btn').onclick = function() {
-                popupOverlay.setMap(null);
-                if (currentOpenedOverlay === popupOverlay) {
-                    currentOpenedOverlay = null;
-                }
-            };
+        const infowindow = new kakao.maps.InfoWindow({ 
+            content: iwContent,
+            removable: true,
+            disableAutoPan: false
+        });
 
-            const preventMapEvents = function(e) {
-                if (e.stopPropagation) {
-                    e.stopPropagation();
-                } else {
-                    e.cancelBubble = true;
-                }
-            };
-
-            popupEl.addEventListener('wheel', preventMapEvents, { passive: true });
-            popupEl.addEventListener('mousewheel', preventMapEvents, { passive: true });
-            popupEl.addEventListener('DOMMouseScroll', preventMapEvents, { passive: true });
-            popupEl.addEventListener('touchstart', preventMapEvents, { passive: true });
-            popupEl.addEventListener('touchmove', preventMapEvents, { passive: true });
-            popupEl.addEventListener('touchend', preventMapEvents, { passive: true });
-
-            const popupOverlay = new kakao.maps.CustomOverlay({
-                position: markerPosition,
-                content: popupEl,
-                yAnchor: 1.0,
-                xAnchor: 0.5
-            });
-
-            popupOverlay.setMap(map);
-            currentOpenedOverlay = popupOverlay;
+        contentEl.addEventListener('click', function() {
+            if (currentOpenedInfoWindow) currentOpenedInfoWindow.close();
+            
+            map.panTo(markerPosition); 
+            
+            infowindow.setPosition(markerPosition);
+            infowindow.open(map);
+            currentOpenedInfoWindow = infowindow;
         });
     });
 }
@@ -1012,7 +850,8 @@ function renderTable(data) {
     data.sort((a, b) => a.distance - b.distance);
     displayStoreMarkersOnMap(data);
 
-    const limitData = data.slice(0, 300); 
+    /* 🎯 [수정] 테이블에 렌더링할 개수 상한을 200개로 변경 */
+    const limitData = data.slice(0, 200); 
     limitData.forEach(item => {
         const fullAddress = `${item.sido} ${item.sigungu} ${item.address}`.trim();
         const kakaoMapUrl = `https://map.kakao.com/link/search/${encodeURIComponent(fullAddress)}`;
@@ -1060,8 +899,9 @@ function renderTable(data) {
         `;
     });
 
-    if (data.length > 300) {
-        tbody.innerHTML += `<tr><td colspan="8" style="padding:15px; background:#f3f4f6; color:#4b5563; font-weight:bold;">⚠️ 데이터가 너무 많아 상위 300개만 화면에 표시 중입니다. 필터를 이용해 범위를 좁혀주세요.</td></tr>`;
+    /* 🎯 [수정] 안내 문구 한도 조건 또한 200개로 변경 */
+    if (data.length > 200) {
+        tbody.innerHTML += `<tr><td colspan="8" style="padding:15px; background:#f3f4f6; color:#4b5563; font-weight:bold;">⚠️ 데이터가 너무 많아 상위 200개만 화면에 표시 중입니다. 필터를 이용해 범위를 좁혀주세요.</td></tr>`;
     }
 }
 
@@ -1080,6 +920,9 @@ document.addEventListener('click', function(e) {
     }
 });
 
+/*********************************************************************
+ * 🔒 [보안 강화] PC 마우스 우클릭, 드래그 블록, 소스보기 단축키 차단
+ *********************************************************************/
 document.addEventListener('contextmenu', function(e) { e.preventDefault(); }, false);
 document.addEventListener('selectstart', function(e) { e.preventDefault(); }, false);
 document.addEventListener('keydown', function(e) {
