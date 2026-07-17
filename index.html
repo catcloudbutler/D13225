@@ -56,7 +56,7 @@
         #csv-file { display: none; }
 
         /* 지도 및 내 위치 검색 영역 스타일 */
-        .map-section { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 15px; }
+        .map-section { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 15px; position: relative; }
         .map-title { font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #374151; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         
         .location-search-box { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; width: 100%; }
@@ -68,7 +68,37 @@
         .btn-gps:hover { background-color: #6d28d9; }
         .top-gps-msg { font-size: 12px; font-weight: bold; color: #6b21a8; margin-left: 4px; display: inline-block; white-space: nowrap; }
 
+        /* 🗺️ 지도 및 수동 갱신 버튼 컨테이너 */
+        .map-container-relative { position: relative; width: 100%; }
         #map { width: 100%; height: 420px; border-radius: 6px; border: 1px solid #d1d5db; }
+
+        /* 🔄 [핵심 추가] 지도 내 위치 재검색 수동 버튼 */
+        .btn-map-refresh {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            display: none; /* 드래그할 때만 동적으로 나타남 */
+            align-items: center;
+            gap: 6px;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .btn-map-refresh:hover {
+            background-color: #1d4ed8;
+        }
+        .btn-map-refresh:active {
+            transform: translateX(-50%) scale(0.97);
+        }
 
         /* 말풍선 디자인 */
         .popup-wrap {
@@ -306,6 +336,8 @@
             
             .popup-wrap { width: 245px; }
             .popup-scroll-container { max-height: 200px; }
+            
+            .btn-map-refresh { padding: 8px 14px; font-size: 11.5px; }
         }
     </style>
 </head>
@@ -347,7 +379,11 @@
             <span id="gps-msg" class="top-gps-msg">위치 신호를 탐색하고 있습니다...</span>
         </div>
         
-        <div id="map"></div>
+        <div class="map-container-relative">
+            <div id="map"></div>
+            <!-- 🔄 [최적화 추가] 지도 위에 동적으로 표시될 수동 업데이트 버튼 -->
+            <button id="btn-refresh" class="btn-map-refresh" onclick="onManualRefreshClick()">🔄 이 위치에서 재검색</button>
+        </div>
     </div>
 
     <div class="filter-grid">
@@ -416,7 +452,7 @@ let centerMarker = null;
 
 let storeMarkers = []; 
 let currentOpenedOverlay = null; 
-let dragTimeout = null; 
+let dragTimeout = null; // 디바운싱 타이머용
 
 function checkAdminAccess() {
     const pwInput = document.getElementById('admin-password');
@@ -461,12 +497,21 @@ function initMap() {
     });
     centerMarker.setMap(map);
 
+    // 🔄 [최적화 적용] 지도가 멈추면(dragend) 연산을 하지 않고 버튼만 노출합니다. (디바운싱 시간 800ms로 조절)
     kakao.maps.event.addListener(map, 'dragend', function() {
         if(dragTimeout) clearTimeout(dragTimeout);
         dragTimeout = setTimeout(function() {
-            updateCenterCoordinates(map.getCenter(), `🎯 지도 중심점 기준으로 거리 보정됨`);
-        }, 300);
+            // 중심점 마커 위치만 즉각 옮겨주고, 화면에 '재검색 버튼'을 띄웁니다.
+            centerMarker.setPosition(map.getCenter());
+            document.getElementById('btn-refresh').style.display = 'flex';
+        }, 800); // 디바운싱 시간 800ms로 상향 조정
     });
+}
+
+// 🔄 [최적화 적용] 사용자가 버튼을 클릭해야만 비로소 거리 계산과 마커/테이블 리렌더링이 일어납니다.
+function onManualRefreshClick() {
+    document.getElementById('btn-refresh').style.display = 'none'; // 버튼 숨기기
+    updateCenterCoordinates(map.getCenter(), `🎯 지도 중심점 기준으로 거리 보정됨`);
 }
 
 function updateCenterCoordinates(latlng, message) {
@@ -478,6 +523,7 @@ function updateCenterCoordinates(latlng, message) {
     document.getElementById('gps-msg').textContent = message;
     document.getElementById('gps-msg').style.color = "#2563eb";
 
+    // 클릭 시점에만 연산 집중 실행!
     recalculateDistances();
     applyFilters();
 }
@@ -497,6 +543,7 @@ function searchNewLocation() {
             const moveLatLng = new kakao.maps.LatLng(firstResult.y, firstResult.x);
             
             map.setCenter(moveLatLng);
+            document.getElementById('btn-refresh').style.display = 'none'; // 자동 매칭되므로 버튼은 감춤
             updateCenterCoordinates(moveLatLng, `🔎 검색 위치 이동: ${firstResult.place_name}`);
         } else {
             geocoder.addressSearch(keyword, function(result, addressStatus) {
@@ -504,6 +551,7 @@ function searchNewLocation() {
                     const moveLatLng = new kakao.maps.LatLng(result[0].y, result[0].x);
                     
                     map.setCenter(moveLatLng);
+                    document.getElementById('btn-refresh').style.display = 'none'; // 자동 매칭되므로 버튼은 감춤
                     updateCenterCoordinates(moveLatLng, `🔎 검색 주소 이동: ${keyword}`);
                 } else {
                     alert('입력하신 장소나 주소를 찾을 수 없습니다. 정확히 입력해 주세요.');
