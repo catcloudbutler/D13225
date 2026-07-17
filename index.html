@@ -187,7 +187,6 @@
             border-radius: 4px;
         }
         
-        /* 📝 문구 변경에 맞춰 관련 클래스명 최적화 고정 */
         .popup-duplicate-title {
             font-weight: bold;
             color: #475569;
@@ -462,9 +461,10 @@ function initMap() {
     const mapContainer = document.getElementById('map');
     if (!mapContainer || typeof kakao === 'undefined') return;
 
+    // 🎯 [레벨 4 적용 완료] 모바일 시각화 최적화를 위해 기존 level 5에서 4로 기본 확대 배율 변경
     const mapOption = {
         center: new kakao.maps.LatLng(userCoords.lat, userCoords.lng),
-        level: 5
+        level: 4
     };
 
     map = new kakao.maps.Map(mapContainer, mapOption);
@@ -535,9 +535,6 @@ function searchNewLocation() {
     });
 }
 
-/*********************************************************************
- * 🎯 [말풍선 텍스트 수정 적용 영역]
- *********************************************************************/
 function displayStoreMarkersOnMap(data) {
     storeCustomOverlays.forEach(overlay => overlay.setMap(null));
     storeCustomOverlays = [];
@@ -559,7 +556,8 @@ function displayStoreMarkersOnMap(data) {
         coordGroups.get(coordKey).push(store);
     });
 
-    const uniqueCoords = Array.from(coordGroups.keys()).slice(0, 100);
+    // 🎯 [유지] 지도 마커 노출 최대 200개 제한
+    const uniqueCoords = Array.from(coordGroups.keys()).slice(0, 200);
 
     uniqueCoords.forEach(coordKey => {
         const storesAtCoord = coordGroups.get(coordKey);
@@ -632,7 +630,6 @@ function displayStoreMarkersOnMap(data) {
                     <li>${a.name} (${a.score.toLocaleString()}건)</li>
                 `).join('');
 
-                /* 📝 요청사항 반영: "유형:" ➡️ "중복여부:", "취급 대리점 목록:" ➡️ "거래대리점명(실적):" */
                 bodyHtml += `
                     <div class="popup-store-card">
                         <div class="popup-store-name">
@@ -983,7 +980,8 @@ function renderTable(data) {
     data.sort((a, b) => a.distance - b.distance);
     displayStoreMarkersOnMap(data);
 
-    const limitData = data.slice(0, 80); 
+    // 🎯 [유지] 하단 리스트 테이블 최대 400개 제한
+    const limitData = data.slice(0, 400); 
     limitData.forEach(item => {
         const fullAddress = `${item.sido} ${item.sigungu} ${item.address}`.trim();
         const kakaoMapUrl = `https://map.kakao.com/link/search/${encodeURIComponent(fullAddress)}`;
@@ -1031,8 +1029,8 @@ function renderTable(data) {
         `;
     });
 
-    if (data.length > 80) {
-        tbody.innerHTML += `<tr><td colspan="8" style="padding:15px; background:#f3f4f6; color:#4b5563; font-weight:bold;">⚠️ 데이터가 너무 많아 상위 80개만 화면에 표시 중입니다. 필터를 이용해 범위를 좁혀주세요.</td></tr>`;
+    if (data.length > 400) {
+        tbody.innerHTML += `<tr><td colspan="8" style="padding:15px; background:#f3f4f6; color:#4b5563; font-weight:bold;">⚠️ 데이터가 너무 많아 상위 400개만 화면에 표시 중입니다. 필터를 이용해 범위를 좁혀주세요.</td></tr>`;
     }
 }
 
@@ -1051,9 +1049,6 @@ document.addEventListener('click', function(e) {
     }
 });
 
-/*********************************************************************
- * 🔒 [보안 강화] PC 마우스 우클릭, 드래그 블록, 소스보기 단축키 차단
- *********************************************************************/
 document.addEventListener('contextmenu', function(e) { e.preventDefault(); }, false);
 document.addEventListener('selectstart', function(e) { e.preventDefault(); }, false);
 document.addEventListener('keydown', function(e) {
