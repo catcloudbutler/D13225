@@ -1,5 +1,5 @@
 function displayStoreMarkersOnMap(data) {
-    storeCustomOverlays.forEach(overlay => overlay.setMap(null));
+    storeCustomOverlays.forEach(function(overlay) { overlay.setMap(null); });
     storeCustomOverlays = [];
     if (currentOpenedOverlay) {
         currentOpenedOverlay.setMap(null);
@@ -8,37 +8,37 @@ function displayStoreMarkersOnMap(data) {
 
     if (!map || data.length === 0) return;
 
-    const validStores = data.filter(item => item.lat > 0 && item.lng > 0);
+    var validStores = data.filter(function(item) { return item.lat > 0 && item.lng > 0; });
+    var coordGroups = new Map();
 
-    const coordGroups = new Map();
-    validStores.forEach(store => {
-        const coordKey = `${store.lat.toFixed(5)}_${store.lng.toFixed(5)}`;
+    validStores.forEach(function(store) {
+        var coordKey = store.lat.toFixed(5) + "_" + store.lng.toFixed(5);
         if (!coordGroups.has(coordKey)) {
             coordGroups.set(coordKey, []);
         }
         coordGroups.get(coordKey).push(store);
     });
 
-    // 🚀 [수정] 기존 .slice(0, 100)을 .slice(0, 2000)으로 변경하여 주변 거래처가 모두 나오도록 확장
-    const uniqueCoords = Array.from(coordGroups.keys()).slice(0, 2000);
+    // 안전하게 2000개까지 마커를 확장합니다.
+    var uniqueCoords = Array.from(coordGroups.keys()).slice(0, 2000);
 
-    uniqueCoords.forEach(coordKey => {
-        const storesAtCoord = coordGroups.get(coordKey);
-        const representativeStore = storesAtCoord[0]; 
-        const markerPosition = new kakao.maps.LatLng(representativeStore.lat, representativeStore.lng);
+    uniqueCoords.forEach(function(coordKey) {
+        var storesAtCoord = coordGroups.get(coordKey);
+        var representativeStore = storesAtCoord[0]; 
+        var markerPosition = new kakao.maps.LatLng(representativeStore.lat, representativeStore.lng);
 
-        const isGJ = storesAtCoord.some(s => s.agency.includes('광장대리점'));
-        const isPSM = storesAtCoord.some(s => s.agency.toUpperCase().includes('PS&M') || s.agency.includes('피에스앤마케팅'));
+        var isGJ = storesAtCoord.some(function(s) { return s.agency.includes('광장대리점'); });
+        var isPSM = storesAtCoord.some(function(s) { return s.agency.toUpperCase().includes('PS&M') || s.agency.includes('피에스앤마케팅'); });
         
-        let pinClass = "pin-normal";
+        var pinClass = "pin-normal";
         if (isGJ) { pinClass = "pin-gj"; } 
-        else if (isPSM && storesAtCoord.some(s => s.type === 'PS_전속')) { pinClass = "pin-psm-exclusive"; } 
-        else if (isPSM && storesAtCoord.some(s => s.type === '중복점')) { pinClass = "pin-psm-duplicate"; }
+        else if (isPSM && storesAtCoord.some(function(s) { return s.type === 'PS_전속'; })) { pinClass = "pin-psm-exclusive"; } 
+        else if (isPSM && storesAtCoord.some(function(s) { return s.type === '중복점'; })) { pinClass = "pin-psm-duplicate"; }
 
-        const contentEl = document.createElement('div');
-        contentEl.className = `custom-pin-marker ${pinClass}`;
+        var contentEl = document.createElement('div');
+        contentEl.className = "custom-pin-marker " + pinClass;
 
-        const customOverlay = new kakao.maps.CustomOverlay({
+        var customOverlay = new kakao.maps.CustomOverlay({
             position: markerPosition,
             content: contentEl,
             yAnchor: 1.0, 
@@ -53,11 +53,11 @@ function displayStoreMarkersOnMap(data) {
                 currentOpenedOverlay.setMap(null);
             }
 
-            const repAddress = `${representativeStore.sido} ${representativeStore.sigungu} ${representativeStore.address}`.trim();
+            var repAddress = (representativeStore.sido + " " + representativeStore.sigungu + " " + representativeStore.address).trim();
+            var storeNameMap = new Map();
 
-            const storeNameMap = new Map();
-            storesAtCoord.forEach(store => {
-                const storeUniqueId = `${store.name}_${store.pcode}`;
+            storesAtCoord.forEach(function(store) {
+                var storeUniqueId = store.name + "_" + store.pcode;
                 if (!storeNameMap.has(storeUniqueId)) {
                     storeNameMap.set(storeUniqueId, {
                         name: store.name,
@@ -66,8 +66,8 @@ function displayStoreMarkersOnMap(data) {
                         agencies: [] 
                     });
                 }
-                const currentObj = storeNameMap.get(storeUniqueId);
-                if (!currentObj.agencies.some(a => a.name === store.agency)) {
+                var currentObj = storeNameMap.get(storeUniqueId);
+                if (!currentObj.agencies.some(function(a) { return a.name === store.agency; })) {
                     currentObj.agencies.push({
                         name: store.agency,
                         score: store.score
@@ -75,45 +75,36 @@ function displayStoreMarkersOnMap(data) {
                 }
             });
 
-            const popupEl = document.createElement('div');
+            var popupEl = document.createElement('div');
             popupEl.className = 'popup-wrap';
 
-            let bodyHtml = `
-                <div class="popup-header">
-                    <span class="popup-title">📍 ${repAddress}</span>
-                    <button class="popup-close-btn">✕</button>
-                </div>
-                <div class="popup-scroll-container">
-            `;
+            var bodyHtml = '<div class="popup-header">' +
+                           '<span class="popup-title">📍 ' + repAddress + '</span>' +
+                           '<button class="popup-close-btn">✕</button>' +
+                           '</div>' +
+                           '<div class="popup-scroll-container">';
 
-            storeNameMap.forEach((info) => {
-                const totalScore = info.agencies.reduce((sum, item) => sum + item.score, 0);
-                
-                let agencyRows = info.agencies.map(a => `
-                    <li>${a.name} (${a.score.toLocaleString()}건)</li>
-                `).join('');
+            storeNameMap.forEach(function(info) {
+                var totalScore = info.agencies.reduce(function(sum, item) { return sum + item.score; }, 0);
+                var agencyRows = info.agencies.map(function(a) {
+                    return '<li>' + a.name + ' (' + a.score.toLocaleString() + '건)</li>';
+                }).join('');
 
-                bodyHtml += `
-                    <div class="popup-store-card">
-                        <div class="popup-store-name">
-                            <span>🏢 ${info.name}</span>
-                            <span class="popup-store-pcode">${info.pcode}</span>
-                        </div>
-                        <div style="font-size: 10px; color: #475569; margin-bottom: 2px;">
-                            중복여부: <span class="badge" style="padding:1px 4px; font-size:9.5px; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155;">${info.type}</span>
-                        </div>
-                        <div class="popup-duplicate-title">📋 거래대리점명(실적):</div>
-                        <ul class="popup-agency-list">
-                            ${agencyRows}
-                        </ul>
-                        <div class="popup-total-score">
-                            실적 합계: ${totalScore.toLocaleString()}건
-                        </div>
-                    </div>
-                `;
+                bodyHtml += '<div class="popup-store-card">' +
+                            '<div class="popup-store-name">' +
+                            '<span>🏢 ' + info.name + '</span>' +
+                            '<span class="popup-store-pcode">' + info.pcode + '</span>' +
+                            '</div>' +
+                            '<div style="font-size: 10px; color: #475569; margin-bottom: 2px;">' +
+                            '중복여부: <span class="badge" style="padding:1px 4px; font-size:9.5px; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155;">' + info.type + '</span>' +
+                            '</div>' +
+                            '<div class="popup-duplicate-title">📋 거래대리점명(실적):</div>' +
+                            '<ul class="popup-agency-list">' + agencyRows + '</ul>' +
+                            '<div class="popup-total-score">실적 합계: ' + totalScore.toLocaleString() + '건</div>' +
+                            '</div>';
             });
 
-            bodyHtml += `</div>`;
+            bodyHtml += '</div>';
             popupEl.innerHTML = bodyHtml;
 
             popupEl.querySelector('.popup-close-btn').onclick = function() {
@@ -123,23 +114,18 @@ function displayStoreMarkersOnMap(data) {
                 }
             };
 
-            const preventMapEvents = function(e) {
-                if (e.stopPropagation) {
-                    e.stopPropagation();
-                } else {
-                    e.cancelBubble = true;
-                }
+            var preventMapEvents = function(e) {
+                if (e.stopPropagation) { e.stopPropagation(); } else { e.cancelBubble = true; }
             };
 
             popupEl.addEventListener('wheel', preventMapEvents, { passive: true });
             popupEl.addEventListener('mousewheel', preventMapEvents, { passive: true });
             popupEl.addEventListener('DOMMouseScroll', preventMapEvents, { passive: true });
-
             popupEl.addEventListener('touchstart', preventMapEvents, { passive: true });
             popupEl.addEventListener('touchmove', preventMapEvents, { passive: true });
             popupEl.addEventListener('touchend', preventMapEvents, { passive: true });
 
-            const popupOverlay = new kakao.maps.CustomOverlay({
+            var popupOverlay = new kakao.maps.CustomOverlay({
                 position: markerPosition,
                 content: popupEl,
                 yAnchor: 1.0,
