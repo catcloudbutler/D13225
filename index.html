@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=yes">
-    <title>지역별 판매점 데이터 통합 복합 검색 필터 시스템 (실적 오류 완벽 해결 버전)</title>
+    <title>지역별 판매점 데이터 통합 복합 검색 필터 시스템 (대리점명 오류 해결 버전)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=47d0f2bd29fbb279cb461bdad2cf1097&libraries=services,clusterer"></script>
@@ -449,7 +449,7 @@ function displayStoreMarkersOnMap(data) {
             if (!mergedStoreMap[nameKey]) mergedStoreMap[nameKey] = { name: nameKey, agencies: [], codes: [], totalScore: 0 };
             if (s.agency && !mergedStoreMap[nameKey].agencies.includes(s.agency)) mergedStoreMap[nameKey].agencies.push(s.agency);
             if (s.pcode && !mergedStoreMap[nameKey].codes.includes(s.pcode)) mergedStoreMap[nameKey].codes.push(s.pcode);
-            mergedStoreMap[nameKey].totalScore += s.score; // 각 지점의 실적을 올바르게 합산
+            mergedStoreMap[nameKey].totalScore += s.score;
         });
 
         const marker = new kakao.maps.Marker({ position: markerPosition, clickable: true });
@@ -562,31 +562,42 @@ function parseCSVFile(fileOrBlob) {
     });
 }
 
-// 🚀 [핵심 수정] 첫 번째 행(헤더)를 분석해 한국어 컬럼명으로 정확한 데이터 순서를 실시간 추출합니다.
+// 🚀 [대리점명 / 대리점코드 중복 매핑 필터링 개선]
 function processRows(rows) {
     if(!rows || rows.length <= 1) return alert('유효한 데이터가 없습니다.');
     
     const headers = rows[0].map(h => h.toString().trim().replace(/[\r\n\t]/g, ''));
-    
-    // 유연한 열 이름 기반 자동 탐색 매핑 (순서가 뒤섞여도 자동 감지)
-    const findIndex = (keywords) => {
-        return headers.findIndex(header => keywords.some(kw => header.includes(kw)));
-    };
 
-    const idxPcode = findIndex(['P코드', 'pcode', '코드', '코드번호']);
-    const idxName = findIndex(['거래처명', '거래처', '판매점명', '상호']);
-    const idxSido = findIndex(['시도', '시/도']);
-    const idxSigungu = findIndex(['시군구', '시/군/구']);
-    const idxDong = findIndex(['읍면동', '법정동', '동/읍/면']);
-    const idxAddress = findIndex(['상세주소', '주소']);
-    const idxAgencyCode = findIndex(['대리점코드', '대리점 ID']);
-    const idxAgencyName = findIndex(['대리점명', '대리점', '관리대리점']);
+    // 1. P코드 및 기본 정보 인덱스 검색
+    const idxPcode = headers.findIndex(h => ['P코드', 'pcode', '코드'].some(kw => h.includes(kw)));
+    const idxName = headers.findIndex(h => ['거래처명', '거래처', '판매점명'].some(kw => h.includes(kw)));
+    const idxSido = headers.findIndex(h => ['시도', '시/도'].some(kw => h.includes(kw)));
+    const idxSigungu = headers.findIndex(h => ['시군구', '시/군/구'].some(kw => h.includes(kw)));
+    const idxDong = headers.findIndex(h => ['읍면동', '법정동', '동/읍/면'].some(kw => h.includes(kw)));
+    const idxAddress = headers.findIndex(h => ['상세주소', '주소'].some(kw => h.includes(kw)));
     
-    // 💡 가장 중요한 대리점 실적 및 총실적 컬럼 추적 (실적, 수량, 수량실적 등 지원)
-    const idxScore = findIndex(['대리점실적', '실적수량', '실적', '수량']);
-    const idxTotalScore = findIndex(['합계수량', '총합계', '전체실적', '분모', '총수량']);
+    // 2. 대리점코드 vs 대리점명 구분을 위한 명확한 세부 검색 조건
+    // '코드', 'ID', '숫자' 등이 붙은 헤더를 우선 대리점코드로 매핑합니다.
+    let idxAgencyCode = headers.findIndex(h => ['대리점코드', '대리점ID', '대리점 id', '대리점코드번호'].some(kw => h.toLowerCase().replace(/\s+/g, '').includes(kw)));
+    if (idxAgencyCode === -1) {
+        idxAgencyCode = headers.findIndex(h => h.includes('대리점') && (h.includes('코드') || h.includes('ID') || h.includes('id')));
+    }
 
-    // 만약 탐색에 실패했을 때를 대비한 기본 인덱스 보정 처리 (Fallback)
+    // 대리점명은 '대리점명', '대리점', '관리대리점' 단어를 찾되, '코드'나 'ID'가 들어가 있는 헤더는 철저히 회피합니다.
+    let idxAgencyName = headers.findIndex(h => 
+        ['대리점명', '관리대리점', '대리점'].some(kw => h.includes(kw)) && 
+        !['코드', 'id', 'ID', '번호'].some(exclude => h.toLowerCase().includes(exclude))
+    );
+    // 만약 걸러내고도 못찾았을 경우 '대리점' 글자가 있는 임의의 열 지정
+    if (idxAgencyName === -1) {
+        idxAgencyName = headers.findIndex(h => h.includes('대리점'));
+    }
+
+    // 3. 실적 관련 인덱스 검색
+    const idxScore = headers.findIndex(h => ['대리점실적', '실적수량', '실적', '수량'].some(kw => h.includes(kw)));
+    const idxTotalScore = headers.findIndex(h => ['합계수량', '총합계', '전체실적', '총수량'].some(kw => h.includes(kw)));
+
+    // Fallback 복구 로직 (검색 실패 시의 기본 순서 보정)
     const mapIndex = {
         pcode: idxPcode !== -1 ? idxPcode : 1,
         name: idxName !== -1 ? idxName : 2,
@@ -606,7 +617,6 @@ function processRows(rows) {
         const pcodeVal = row[mapIndex.pcode].toString().trim();
         pcodeCounts[pcodeVal] = (pcodeCounts[pcodeVal] || 0) + 1;
 
-        // 콤마 및 노이즈 제거 후 숫자로 파싱
         const rawScore = row[mapIndex.score]?.toString().replace(/[^0-9.-]/g, '').trim();
         const rawTotal = row[mapIndex.totalScore]?.toString().replace(/[^0-9.-]/g, '').trim();
         
