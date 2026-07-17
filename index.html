@@ -149,31 +149,35 @@
         .admin-pw-input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
 
         .table-container { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 8px; max-height: 550px; overflow-y: auto; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
-        table { width: 100%; min-width: 1000px; border-collapse: collapse; font-size: 13px; text-align: center; table-layout: fixed; }
         
-        /* 대리점코드가 삭제되어 열 너비 비율 재조정 */
-        th:nth-child(1), td:nth-child(1) { width: 95px; }  
-        th:nth-child(2), td:nth-child(2) { width: 140px; } 
-        th:nth-child(3), td:nth-child(3) { width: 85px; }  
-        th:nth-child(4), td:nth-child(4) { width: auto; }   
-        th:nth-child(5), td:nth-child(5) { width: 125px; } /* 대리점명 */
-        th:nth-child(6), td:nth-child(6) { width: 85px; }  /* 점유비 */
-        th:nth-child(7), td:nth-child(7) { width: 105px; } /* 대리점실적 */
+        /* 💡 간격 가독성 개선을 위해 table-layout을 최적화하고 최소 너비를 조절 */
+        table { width: 100%; min-width: 950px; border-collapse: collapse; font-size: 13px; text-align: center; table-layout: fixed; }
+        
+        /* ⚙️ 주소부분의 너비 비율을 줄이고 타 열(거래처명, 대리점명)을 넓혀 균형 조절 */
+        th:nth-child(1), td:nth-child(1) { width: 85px; }  /* P코드 */
+        th:nth-child(2), td:nth-child(2) { width: 170px; } /* 거래처명 (대폭 확장) */
+        th:nth-child(3), td:nth-child(3) { width: 95px; }  /* 읍면동 */
+        th:nth-child(4), td:nth-child(4) { width: 280px; } /* 상세주소 (축소 및 고정값 설정) */
+        th:nth-child(5), td:nth-child(5) { width: 160px; } /* 대리점명 (가독성 향상) */
+        th:nth-child(6), td:nth-child(6) { width: 80px; }  /* 점유비 */
+        th:nth-child(7), td:nth-child(7) { width: 80px; }  /* 대리점실적 */
 
-        th, td { padding: 10px 8px; border-bottom: 1px solid #e5e7eb; box-sizing: border-box; }
+        th, td { padding: 10px 6px; border-bottom: 1px solid #e5e7eb; box-sizing: border-box; }
         th { background-color: #f3f4f6; color: #374151; font-weight: 700; position: sticky; top: 0; z-index: 10; }
         td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        td.text-left { text-align: left; white-space: normal; word-break: break-all; } 
+        
+        /* 주소 부분 글자가 잘리거나 밀릴 때 말줄임처리하되 마우스 올리면 보이게 변경 */
+        td.text-left { text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } 
         tr { transition: background-color 0.2s; }
         tr:hover { background-color: #f1f5f9; }
         
         tr.duplicate-row { background-color: #FFFFCC; }
         tr.duplicate-row:hover { background-color: #fef08a !important; }
 
-        .map-link { color: #2563eb; text-decoration: none; font-weight: 500; display: inline-block; vertical-align: middle; }
+        .map-link { color: #2563eb; text-decoration: none; font-weight: 500; display: inline-block; vertical-align: middle; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .map-link:hover { text-decoration: underline; color: #1d4ed8; }
         
-        .distance-tag { font-size: 11px; background-color: #f3e8ff; color: #6b21a8; padding: 2px 7px; border-radius: 20px; font-weight: bold; margin-left: 6px; display: inline-block; vertical-align: middle; white-space: nowrap; }
+        .distance-tag { font-size: 10px; background-color: #f3e8ff; color: #6b21a8; padding: 2px 5px; border-radius: 20px; font-weight: bold; margin-left: 4px; display: inline-block; vertical-align: middle; white-space: nowrap; }
 
         .badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; display: inline-block; }
         .badge-total { background-color: #dcfce7; color: #166534; }  
@@ -208,15 +212,26 @@
             .btn-group { grid-column: span 2; margin-top: 5px; }
             .map-title { flex-direction: column; align-items: flex-start; gap: 6px; }
             .admin-pw-box { margin-left: 0; width: 100%; display: flex; justify-content: flex-start; }
-            table { font-size: 12px; min-width: 900px; } 
-            th, td { padding: 8px 5px; }
+            
+            /* 📱 모바일 터치 스크롤 최적화 및 폰트 축소 */
+            table { font-size: 11px; min-width: 820px; } 
+            th, td { padding: 8px 4px; }
+            
+            /* 모바일 전용 헤더 및 내용 너비 재정비 */
+            th:nth-child(1), td:nth-child(1) { width: 70px; }  
+            th:nth-child(2), td:nth-child(2) { width: 140px; } 
+            th:nth-child(3), td:nth-child(3) { width: 80px; }  
+            th:nth-child(4), td:nth-child(4) { width: 220px; } /* 주소가 과도하게 밀려보이지 않도록 억제 */
+            th:nth-child(5), td:nth-child(5) { width: 130px; } 
+            th:nth-child(6), td:nth-child(6) { width: 65px; }  
+            th:nth-child(7), td:nth-child(7) { width: 65px; }  
+            
             .badge { font-size: 10px; padding: 2px 4px; }
-            .distance-tag { font-size: 10px; padding: 1px 5px; }
+            .distance-tag { font-size: 9px; padding: 1px 4px; }
             #map { height: 320px; }
         }
     </style>
 </head>
-<!-- 🚀 JavaScript를 통한 우클릭, 드래그, 선택 이벤트 완전 차단 트리거 추가 -->
 <body oncontextmenu="return false" onselectstart="return false" ondragstart="return false">
 
 <div id="server-lock-screen">
@@ -694,13 +709,12 @@ function renderTable(data) {
             bClass = "badge badge-psm-agency";
         }
         
-        // 🚀 대리점코드 열(<td>${item.agencyCode}</td>)을 완전히 제거한 구조로 출력
         tbody.innerHTML += `
             <tr ${pcodeCounts[item.pcode] > 1 ? 'class="duplicate-row"' : ''}>
                 <td><b>${item.pcode}</b></td>
                 <td title="${item.name}"><b>${item.name}</b></td>
                 <td>${item.dong}</td>
-                <td class="text-left"><a href="https://map.kakao.com/link/search/${encodeURIComponent(item.sido+' '+item.sigungu+' '+item.address)}" target="_blank" class="map-link">📍 ${item.address}</a>${distTag}</td>
+                <td class="text-left" title="${item.address}"><a href="https://map.kakao.com/link/search/${encodeURIComponent(item.sido+' '+item.sigungu+' '+item.address)}" target="_blank" class="map-link">📍 ${item.address}</a>${distTag}</td>
                 <td><span class="${bClass}">${item.agency}</span></td>
                 <td><span class="badge badge-score">${item.ratio.toFixed(1)}%</span></td>
                 <td><span class="badge badge-total">${item.score.toLocaleString()}</span></td>
