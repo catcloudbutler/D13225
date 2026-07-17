@@ -221,27 +221,6 @@
             padding-top: 4px;
         }
 
-        /* 🎨 마커 디자인 */
-        .custom-pin-marker {
-            position: relative;
-            width: 24px;   
-            height: 24px;  
-            border-radius: 50% 50% 50% 0;
-            transform: rotate(-45deg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: -1px 2px 4px rgba(0,0,0,0.3);
-            cursor: pointer;
-            border: 2px solid #ffffff;
-            box-sizing: border-box;
-            z-index: 5;
-        }
-        .pin-gj { background-color: #153D64 !important; }
-        .pin-psm-exclusive { background-color: #FF0000 !important; }
-        .pin-psm-duplicate { background-color: #FFFF00 !important; border: 2px solid #cbd5e1; }
-        .pin-normal { background-color: #2563EB !important; }
-
         .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px; margin-top: 15px; }
         .filter-group { display: flex; flex-direction: column; position: relative; }
         .filter-group label { font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #4b5563; }
@@ -435,7 +414,7 @@ let placesService = null;
 let map = null;
 let centerMarker = null;
 
-let storeCustomOverlays = []; 
+let storeMarkers = []; 
 let currentOpenedOverlay = null; 
 let dragTimeout = null; 
 
@@ -534,9 +513,10 @@ function searchNewLocation() {
     });
 }
 
+/* 🚀 HTML 커스텀 오버레이 대신 가벼운 kakao.maps.Marker 적용 */
 function displayStoreMarkersOnMap(data) {
-    storeCustomOverlays.forEach(overlay => overlay.setMap(null));
-    storeCustomOverlays = [];
+    storeMarkers.forEach(marker => marker.setMap(null));
+    storeMarkers = [];
     if (currentOpenedOverlay) {
         currentOpenedOverlay.setMap(null);
         currentOpenedOverlay = null;
@@ -555,7 +535,6 @@ function displayStoreMarkersOnMap(data) {
         coordGroups.get(coordKey).push(store);
     });
 
-    // 🎯 지도 마커 노출 최대 150개 제한으로 변경
     const uniqueCoords = Array.from(coordGroups.keys()).slice(0, 150);
 
     uniqueCoords.forEach(coordKey => {
@@ -566,25 +545,32 @@ function displayStoreMarkersOnMap(data) {
         const isGJ = storesAtCoord.some(s => s.agency.includes('광장대리점'));
         const isPSM = storesAtCoord.some(s => s.agency.toUpperCase().includes('PS&M') || s.agency.includes('피에스앤마케팅'));
         
-        let pinClass = "pin-normal";
-        if (isGJ) { pinClass = "pin-gj"; } 
-        else if (isPSM && storesAtCoord.some(s => s.type === 'PS_전속')) { pinClass = "pin-psm-exclusive"; } 
-        else if (isPSM && storesAtCoord.some(s => s.type === '중복점')) { pinClass = "pin-psm-duplicate"; }
+        // 🎨 카카오 기본 리소스를 활용한 경량 이미지 마커 이원화 설정
+        let markerImageUrl = 'https://t1.daumcdn.net/localimg/localimages/07/2012/img/marker_p.png'; // 일반 (파란색)
+        if (isGJ) { 
+            markerImageUrl = 'https://t1.daumcdn.net/localimg/localimages/07/2018/pc/img/marker_spot.png'; // 광장 (밤하늘색)
+        } else if (isPSM && storesAtCoord.some(s => s.type === 'PS_전속')) { 
+            markerImageUrl = 'https://t1.daumcdn.net/mapjsapi/images/marker.png'; // PS 전속 (빨간색)
+        } else if (isPSM && storesAtCoord.some(s => s.type === '중복점')) { 
+            markerImageUrl = 'https://t1.daumcdn.net/localimg/localimages/07/2012/img/marker_normal.png'; // 중복점 (노란색 계열)
+        }
 
-        const contentEl = document.createElement('div');
-        contentEl.className = `custom-pin-marker ${pinClass}`;
+        const markerImage = new kakao.maps.MarkerImage(
+            markerImageUrl,
+            new kakao.maps.Size(26, 36),
+            { offset: new kakao.maps.Point(13, 36) }
+        );
 
-        const customOverlay = new kakao.maps.CustomOverlay({
+        const marker = new kakao.maps.Marker({
             position: markerPosition,
-            content: contentEl,
-            yAnchor: 1.0, 
-            xAnchor: 0.5  
+            image: markerImage
         });
 
-        customOverlay.setMap(map);
-        storeCustomOverlays.push(customOverlay);
+        marker.setMap(map);
+        storeMarkers.push(marker);
 
-        contentEl.addEventListener('click', function() {
+        // 마커 클릭 시 정보창(CustomOverlay 말풍선) 표시 기능 연동
+        kakao.maps.event.addListener(marker, 'click', function() {
             if (currentOpenedOverlay) {
                 currentOpenedOverlay.setMap(null);
             }
@@ -670,7 +656,6 @@ function displayStoreMarkersOnMap(data) {
             popupEl.addEventListener('wheel', preventMapEvents, { passive: true });
             popupEl.addEventListener('mousewheel', preventMapEvents, { passive: true });
             popupEl.addEventListener('DOMMouseScroll', preventMapEvents, { passive: true });
-
             popupEl.addEventListener('touchstart', preventMapEvents, { passive: true });
             popupEl.addEventListener('touchmove', preventMapEvents, { passive: true });
             popupEl.addEventListener('touchend', preventMapEvents, { passive: true });
@@ -979,7 +964,6 @@ function renderTable(data) {
     data.sort((a, b) => a.distance - b.distance);
     displayStoreMarkersOnMap(data);
 
-    // 🎯 하단 리스트 테이블 최대 300개 제한으로 변경
     const limitData = data.slice(0, 300); 
     limitData.forEach(item => {
         const fullAddress = `${item.sido} ${item.sigungu} ${item.address}`.trim();
@@ -1028,7 +1012,6 @@ function renderTable(data) {
         `;
     });
 
-    // 🎯 경고 메시지 텍스트 출력 한도 수정 (400개 -> 300개)
     if (data.length > 300) {
         tbody.innerHTML += `<tr><td colspan="8" style="padding:15px; background:#f3f4f6; color:#4b5563; font-weight:bold;">⚠️ 데이터가 너무 많아 상위 300개만 화면에 표시 중입니다. 필터를 이용해 범위를 좁혀주세요.</td></tr>`;
     }
