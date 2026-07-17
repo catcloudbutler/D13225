@@ -1,139 +1,209 @@
-function displayStoreMarkersOnMap(data) {
-    storeCustomOverlays.forEach(function(overlay) { overlay.setMap(null); });
-    storeCustomOverlays = [];
-    if (currentOpenedOverlay) {
-        currentOpenedOverlay.setMap(null);
-        currentOpenedOverlay = null;
-    }
-
-    if (!map || data.length === 0) return;
-
-    var validStores = data.filter(function(item) { return item.lat > 0 && item.lng > 0; });
-    var coordGroups = new Map();
-
-    validStores.forEach(function(store) {
-        var coordKey = store.lat.toFixed(5) + "_" + store.lng.toFixed(5);
-        if (!coordGroups.has(coordKey)) {
-            coordGroups.set(coordKey, []);
-        }
-        coordGroups.get(coordKey).push(store);
-    });
-
-    // 안전하게 2000개까지 마커를 확장합니다.
-    var uniqueCoords = Array.from(coordGroups.keys()).slice(0, 2000);
-
-    uniqueCoords.forEach(function(coordKey) {
-        var storesAtCoord = coordGroups.get(coordKey);
-        var representativeStore = storesAtCoord[0]; 
-        var markerPosition = new kakao.maps.LatLng(representativeStore.lat, representativeStore.lng);
-
-        var isGJ = storesAtCoord.some(function(s) { return s.agency.includes('광장대리점'); });
-        var isPSM = storesAtCoord.some(function(s) { return s.agency.toUpperCase().includes('PS&M') || s.agency.includes('피에스앤마케팅'); });
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>판매점 데이터 통합 조회 시스템</title>
+    <!-- 카카오맵 API 라이브러리 (실제 발급받은 APP KEY가 없다면 시스템 환경에 맞게 유지됩니다) -->
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=YOUR_KAKAO_APP_KEY&libraries=services"></script>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; margin: 20px; background-color: #f8fafc; color: #334155; }
+        .system-title { text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 20px; }
+        .map-container { width: 100%; height: 500px; border: 1px solid #cbd5e1; border-radius: 8px; position: relative; }
+        #map { width: 100%; height: 100%; border-radius: 8px; }
         
-        var pinClass = "pin-normal";
-        if (isGJ) { pinClass = "pin-gj"; } 
-        else if (isPSM && storesAtCoord.some(function(s) { return s.type === 'PS_전속'; })) { pinClass = "pin-psm-exclusive"; } 
-        else if (isPSM && storesAtCoord.some(function(s) { return s.type === '중복점'; })) { pinClass = "pin-psm-duplicate"; }
+        /* 커스텀 핀 마커 스타일 */
+        .custom-pin-marker { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.3); cursor: pointer; }
+        .pin-normal { background-color: #3b82f6; }
+        .pin-gj { background-color: #ef4444; }
+        .pin-psm-exclusive { background-color: #10b981; }
+        .pin-psm-duplicate { background-color: #f59e0b; }
 
-        var contentEl = document.createElement('div');
-        contentEl.className = "custom-pin-marker " + pinClass;
+        /* 팝업 스타일 */
+        .popup-wrap { position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); width: 280px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10; font-family: sans-serif; }
+        .popup-header { display: flex; justify-content: space-between; align-items: center; background: #f1f5f9; padding: 8px 12px; border-top-left-radius: 7px; border-top-right-radius: 7px; border-bottom: 1px solid #e2e8f0; }
+        .popup-title { font-size: 12px; font-weight: bold; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+        .popup-close-btn { background: none; border: none; font-size: 14px; cursor: pointer; color: #64748b; }
+        .popup-scroll-container { max-height: 240px; overflow-y: auto; padding: 10px; }
+        .popup-store-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; margin-bottom: 8px; }
+        .popup-store-card:last-child { margin-bottom: 0; }
+        .popup-store-name { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: bold; color: #0f172a; margin-bottom: 4px; }
+        .popup-store-pcode { font-size: 10px; color: #64748b; font-weight: normal; }
+        .popup-duplicate-title { font-size: 11px; font-weight: bold; color: #475569; margin-top: 6px; margin-bottom: 2px; }
+        .popup-agency-list { margin: 0; padding-left: 14px; font-size: 11px; color: #334155; }
+        .popup-total-score { font-size: 11px; font-weight: bold; color: #0284c7; text-align: right; margin-top: 6px; border-top: 1px dashed #cbd5e1; padding-top: 4px; }
+        .badge { display: inline-block; padding: 1px 4px; font-size: 9.5px; background: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; border-radius: 3px; }
+    </style>
+</head>
+<body>
 
-        var customOverlay = new kakao.maps.CustomOverlay({
-            position: markerPosition,
-            content: contentEl,
-            yAnchor: 1.0, 
-            xAnchor: 0.5  
-        });
+    <div class="system-title">📊 판매점 데이터 통합 조회 시스템</div>
 
-        customOverlay.setMap(map);
-        storeCustomOverlays.push(customOverlay);
+    <!-- 지도 영역 -->
+    <div class="map-container">
+        <div id="map"></div>
+    </div>
 
-        contentEl.addEventListener('click', function() {
+    <script>
+        // 전역 변수 설정
+        var map;
+        var storeCustomOverlays = [];
+        var currentOpenedOverlay = null;
+
+        // 지도 초기화 함수
+        function initMap() {
+            var mapContainer = document.getElementById('map');
+            var mapOption = {
+                center: new kakao.maps.LatLng(37.5665, 126.9780), // 초기 서울 중심 좌표
+                level: 5
+            };
+            map = new kakao.maps.Map(mapContainer, mapOption);
+        }
+
+        // 카카오맵 로드 시 초기화 실행
+        if (typeof kakao !== 'undefined' && kakao.maps) {
+            kakao.maps.load(initMap);
+        }
+
+        // 주변 거래처가 누락 없이 나오도록 개선된 마커 표시 함수
+        function displayStoreMarkersOnMap(data) {
+            storeCustomOverlays.forEach(function(overlay) { overlay.setMap(null); });
+            storeCustomOverlays = [];
             if (currentOpenedOverlay) {
                 currentOpenedOverlay.setMap(null);
+                currentOpenedOverlay = null;
             }
 
-            var repAddress = (representativeStore.sido + " " + representativeStore.sigungu + " " + representativeStore.address).trim();
-            var storeNameMap = new Map();
+            if (!map || data.length === 0) return;
 
-            storesAtCoord.forEach(function(store) {
-                var storeUniqueId = store.name + "_" + store.pcode;
-                if (!storeNameMap.has(storeUniqueId)) {
-                    storeNameMap.set(storeUniqueId, {
-                        name: store.name,
-                        pcode: store.pcode,
-                        type: store.type,
-                        agencies: [] 
+            var validStores = data.filter(function(item) { return item.lat > 0 && item.lng > 0; });
+            var coordGroups = new Map();
+
+            validStores.forEach(function(store) {
+                var coordKey = store.lat.toFixed(5) + "_" + store.lng.toFixed(5);
+                if (!coordGroups.has(coordKey)) {
+                    coordGroups.set(coordKey, []);
+                }
+                coordGroups.get(coordKey).push(store);
+            });
+
+            // 마커 표시 한도를 2,000개로 상향하여 누락되던 중곡역, 군자역 주변 거래처가 모두 나옵니다.
+            var uniqueCoords = Array.from(coordGroups.keys()).slice(0, 2000);
+
+            uniqueCoords.forEach(function(coordKey) {
+                var storesAtCoord = coordGroups.get(coordKey);
+                var representativeStore = storesAtCoord[0]; 
+                var markerPosition = new kakao.maps.LatLng(representativeStore.lat, representativeStore.lng);
+
+                var isGJ = storesAtCoord.some(function(s) { return s.agency.includes('광장대리점'); });
+                var isPSM = storesAtCoord.some(function(s) { return s.agency.toUpperCase().includes('PS&M') || s.agency.includes('피에스앤마케팅'); });
+                
+                var pinClass = "pin-normal";
+                if (isGJ) { pinClass = "pin-gj"; } 
+                else if (isPSM && storesAtCoord.some(function(s) { return s.type === 'PS_전속'; })) { pinClass = "pin-psm-exclusive"; } 
+                else if (isPSM && storesAtCoord.some(function(s) { return s.type === '중복점'; })) { pinClass = "pin-psm-duplicate"; }
+
+                var contentEl = document.createElement('div');
+                contentEl.className = "custom-pin-marker " + pinClass;
+
+                var customOverlay = new kakao.maps.CustomOverlay({
+                    position: markerPosition,
+                    content: contentEl,
+                    yAnchor: 1.0, 
+                    xAnchor: 0.5  
+                });
+
+                customOverlay.setMap(map);
+                storeCustomOverlays.push(customOverlay);
+
+                contentEl.addEventListener('click', function() {
+                    if (currentOpenedOverlay) {
+                        currentOpenedOverlay.setMap(null);
+                    }
+
+                    var repAddress = (representativeStore.sido + " " + representativeStore.sigungu + " " + representativeStore.address).trim();
+                    var storeNameMap = new Map();
+
+                    storesAtCoord.forEach(function(store) {
+                        var storeUniqueId = store.name + "_" + store.pcode;
+                        if (!storeNameMap.has(storeUniqueId)) {
+                            storeNameMap.set(storeUniqueId, {
+                                name: store.name,
+                                pcode: store.pcode,
+                                type: store.type,
+                                agencies: [] 
+                            });
+                        }
+                        var currentObj = storeNameMap.get(storeUniqueId);
+                        if (!currentObj.agencies.some(function(a) { return a.name === store.agency; })) {
+                            currentObj.agencies.push({
+                                name: store.agency,
+                                score: store.score
+                            });
+                        }
                     });
-                }
-                var currentObj = storeNameMap.get(storeUniqueId);
-                if (!currentObj.agencies.some(function(a) { return a.name === store.agency; })) {
-                    currentObj.agencies.push({
-                        name: store.agency,
-                        score: store.score
+
+                    var popupEl = document.createElement('div');
+                    popupEl.className = 'popup-wrap';
+
+                    var bodyHtml = '<div class="popup-header">' +
+                                   '<span class="popup-title">📍 ' + repAddress + '</span>' +
+                                   '<button class="popup-close-btn">✕</button>' +
+                                   '</div>' +
+                                   '<div class="popup-scroll-container">';
+
+                    storeNameMap.forEach(function(info) {
+                        var totalScore = info.agencies.reduce(function(sum, item) { return sum + item.score; }, 0);
+                        var agencyRows = info.agencies.map(function(a) {
+                            return '<li>' + a.name + ' (' + a.score.toLocaleString() + '건)</li>';
+                        }).join('');
+
+                        bodyHtml += '<div class="popup-store-card">' +
+                                    '<div class="popup-store-name">' +
+                                    '<span>🏢 ' + info.name + '</span>' +
+                                    '<span class="popup-store-pcode">' + info.pcode + '</span>' +
+                                    '</div>' +
+                                    '<div style="font-size: 10px; color: #475569; margin-bottom: 2px;">' +
+                                    '중복여부: <span class="badge" style="padding:1px 4px; font-size:9.5px; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155;">' + info.type + '</span>' +
+                                    '</div>' +
+                                    '<div class="popup-duplicate-title">📋 거래대리점명(실적):</div>' +
+                                    '<ul class="popup-agency-list">' + agencyRows + '</ul>' +
+                                    '<div class="popup-total-score">실적 합계: ' + totalScore.toLocaleString() + '건</div>' +
+                                    '</div>';
                     });
-                }
+
+                    bodyHtml += '</div>';
+                    popupEl.innerHTML = bodyHtml;
+
+                    popupEl.querySelector('.popup-close-btn').onclick = function() {
+                        popupOverlay.setMap(null);
+                        if (currentOpenedOverlay === popupOverlay) {
+                            currentOpenedOverlay = null;
+                        }
+                    };
+
+                    var preventMapEvents = function(e) {
+                        if (e.stopPropagation) { e.stopPropagation(); } else { e.cancelBubble = true; }
+                    };
+
+                    popupEl.addEventListener('wheel', preventMapEvents, { passive: true });
+                    popupEl.addEventListener('mousewheel', preventMapEvents, { passive: true });
+                    popupEl.addEventListener('DOMMouseScroll', preventMapEvents, { passive: true });
+                    popupEl.addEventListener('touchstart', preventMapEvents, { passive: true });
+                    popupEl.addEventListener('touchmove', preventMapEvents, { passive: true });
+                    popupEl.addEventListener('touchend', preventMapEvents, { passive: true });
+
+                    var popupOverlay = new kakao.maps.CustomOverlay({
+                        position: markerPosition,
+                        content: popupEl,
+                        yAnchor: 1.0,
+                        xAnchor: 0.5
+                    });
+
+                    popupOverlay.setMap(map);
+                    currentOpenedOverlay = popupOverlay;
+                });
             });
-
-            var popupEl = document.createElement('div');
-            popupEl.className = 'popup-wrap';
-
-            var bodyHtml = '<div class="popup-header">' +
-                           '<span class="popup-title">📍 ' + repAddress + '</span>' +
-                           '<button class="popup-close-btn">✕</button>' +
-                           '</div>' +
-                           '<div class="popup-scroll-container">';
-
-            storeNameMap.forEach(function(info) {
-                var totalScore = info.agencies.reduce(function(sum, item) { return sum + item.score; }, 0);
-                var agencyRows = info.agencies.map(function(a) {
-                    return '<li>' + a.name + ' (' + a.score.toLocaleString() + '건)</li>';
-                }).join('');
-
-                bodyHtml += '<div class="popup-store-card">' +
-                            '<div class="popup-store-name">' +
-                            '<span>🏢 ' + info.name + '</span>' +
-                            '<span class="popup-store-pcode">' + info.pcode + '</span>' +
-                            '</div>' +
-                            '<div style="font-size: 10px; color: #475569; margin-bottom: 2px;">' +
-                            '중복여부: <span class="badge" style="padding:1px 4px; font-size:9.5px; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155;">' + info.type + '</span>' +
-                            '</div>' +
-                            '<div class="popup-duplicate-title">📋 거래대리점명(실적):</div>' +
-                            '<ul class="popup-agency-list">' + agencyRows + '</ul>' +
-                            '<div class="popup-total-score">실적 합계: ' + totalScore.toLocaleString() + '건</div>' +
-                            '</div>';
-            });
-
-            bodyHtml += '</div>';
-            popupEl.innerHTML = bodyHtml;
-
-            popupEl.querySelector('.popup-close-btn').onclick = function() {
-                popupOverlay.setMap(null);
-                if (currentOpenedOverlay === popupOverlay) {
-                    currentOpenedOverlay = null;
-                }
-            };
-
-            var preventMapEvents = function(e) {
-                if (e.stopPropagation) { e.stopPropagation(); } else { e.cancelBubble = true; }
-            };
-
-            popupEl.addEventListener('wheel', preventMapEvents, { passive: true });
-            popupEl.addEventListener('mousewheel', preventMapEvents, { passive: true });
-            popupEl.addEventListener('DOMMouseScroll', preventMapEvents, { passive: true });
-            popupEl.addEventListener('touchstart', preventMapEvents, { passive: true });
-            popupEl.addEventListener('touchmove', preventMapEvents, { passive: true });
-            popupEl.addEventListener('touchend', preventMapEvents, { passive: true });
-
-            var popupOverlay = new kakao.maps.CustomOverlay({
-                position: markerPosition,
-                content: popupEl,
-                yAnchor: 1.0,
-                xAnchor: 0.5
-            });
-
-            popupOverlay.setMap(map);
-            currentOpenedOverlay = popupOverlay;
-        });
-    });
-}
+        }
+    </script>
+</body>
+</html>
