@@ -70,9 +70,7 @@
 
         #map { width: 100%; height: 420px; border-radius: 6px; border: 1px solid #d1d5db; }
 
-        /*********************************************************************
-         * 🎯 [개선] 스크롤 및 터치가 확실히 먹히는 스크롤형 말풍선 디자인
-         *********************************************************************/
+        /* 말풍선 디자인 */
         .popup-wrap {
             background: #ffffff;
             border: 2px solid #3b82f6;
@@ -84,13 +82,12 @@
             left: 50%;
             transform: translateX(-50%);
             z-index: 1010;
-            width: 270px; /* 가로 고정하여 화면 틀어짐 방지 */
+            width: 270px; 
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
             gap: 8px;
         }
-        /* 말풍선 밑에 달릴 꼬리표 */
         .popup-wrap::after {
             content: '';
             position: absolute;
@@ -103,7 +100,6 @@
             display: block;
             width: 0;
         }
-        /* 말풍선 상단 고정 헤더 */
         .popup-header {
             display: flex;
             justify-content: space-between;
@@ -135,7 +131,6 @@
             color: #ef4444;
         }
 
-        /* 🔄 스크롤 타겟 내부 컨테이너 (스크롤바 생김) */
         .popup-scroll-container {
             max-height: 240px; 
             overflow-y: auto;  
@@ -143,11 +138,9 @@
             flex-direction: column;
             gap: 10px;
             padding-right: 4px;
-            /* 모바일에서 부드러운 터치 스크롤 지원 */
             -webkit-overflow-scrolling: touch; 
         }
 
-        /* 미니 스크롤바 커스텀 */
         .popup-scroll-container::-webkit-scrollbar {
             width: 6px;
         }
@@ -163,7 +156,6 @@
             background: #94a3b8;
         }
 
-        /* 개별 거래처 카드 디자인 */
         .popup-store-card {
             background-color: #f8fafc;
             border: 1px solid #cbd5e1;
@@ -194,7 +186,9 @@
             padding: 1px 4px;
             border-radius: 4px;
         }
-        .popup-agency-title {
+        
+        /* 📝 문구 변경에 맞춰 관련 클래스명 최적화 고정 */
+        .popup-duplicate-title {
             font-weight: bold;
             color: #475569;
             margin-top: 1px;
@@ -228,7 +222,7 @@
             padding-top: 4px;
         }
 
-        /* 🎨 미니멀 커스텀 지도 마커 디자인 */
+        /* 🎨 마커 디자인 */
         .custom-pin-marker {
             position: relative;
             width: 24px;   
@@ -332,7 +326,6 @@
             .distance-tag { font-size: 9.5px; padding: 1px 4px; }
             #map { height: 280px; }
             
-            /* 모바일 말풍선 최적화 */
             .popup-wrap { width: 245px; }
             .popup-scroll-container { max-height: 200px; }
         }
@@ -543,7 +536,7 @@ function searchNewLocation() {
 }
 
 /*********************************************************************
- * 🎯 [수정] 스크롤 이벤트가 지도에 뺏기지 않도록 방지하는 터치/휠 차단 처리
+ * 🎯 [말풍선 텍스트 수정 적용 영역]
  *********************************************************************/
 function displayStoreMarkersOnMap(data) {
     storeCustomOverlays.forEach(overlay => overlay.setMap(null));
@@ -639,6 +632,7 @@ function displayStoreMarkersOnMap(data) {
                     <li>${a.name} (${a.score.toLocaleString()}건)</li>
                 `).join('');
 
+                /* 📝 요청사항 반영: "유형:" ➡️ "중복여부:", "취급 대리점 목록:" ➡️ "거래대리점명(실적):" */
                 bodyHtml += `
                     <div class="popup-store-card">
                         <div class="popup-store-name">
@@ -646,9 +640,9 @@ function displayStoreMarkersOnMap(data) {
                             <span class="popup-store-pcode">${info.pcode}</span>
                         </div>
                         <div style="font-size: 10px; color: #475569; margin-bottom: 2px;">
-                            유형: <span class="badge" style="padding:1px 4px; font-size:9.5px; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155;">${info.type}</span>
+                            중복여부: <span class="badge" style="padding:1px 4px; font-size:9.5px; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155;">${info.type}</span>
                         </div>
-                        <div class="popup-agency-title">📋 취급 대리점 목록:</div>
+                        <div class="popup-duplicate-title">📋 거래대리점명(실적):</div>
                         <ul class="popup-agency-list">
                             ${agencyRows}
                         </ul>
@@ -662,7 +656,6 @@ function displayStoreMarkersOnMap(data) {
             bodyHtml += `</div>`;
             popupEl.innerHTML = bodyHtml;
 
-            // ✕ 닫기 단추 이벤트 처리
             popupEl.querySelector('.popup-close-btn').onclick = function() {
                 popupOverlay.setMap(null);
                 if (currentOpenedOverlay === popupOverlay) {
@@ -670,11 +663,7 @@ function displayStoreMarkersOnMap(data) {
                 }
             };
 
-            /*********************************************************************
-             * 🛠️ [핵심 수정] 지도 이벤트 흡수 방지 로직 (휠 & 터치 이벤트 전파 중단)
-             *********************************************************************/
             const preventMapEvents = function(e) {
-                // 부모 지도 레이어로 마우스 드래그, 스크롤, 터치 이벤트가 흘러 들어가는 것을 완전히 차단
                 if (e.stopPropagation) {
                     e.stopPropagation();
                 } else {
@@ -682,12 +671,10 @@ function displayStoreMarkersOnMap(data) {
                 }
             };
 
-            // 데스크톱 마우스 휠 스크롤 허용
             popupEl.addEventListener('wheel', preventMapEvents, { passive: true });
             popupEl.addEventListener('mousewheel', preventMapEvents, { passive: true });
             popupEl.addEventListener('DOMMouseScroll', preventMapEvents, { passive: true });
 
-            // 모바일 터치 기반 스크롤 허용 (이벤트를 막지 않고 스크롤이 구동되게끔 방어 처리)
             popupEl.addEventListener('touchstart', preventMapEvents, { passive: true });
             popupEl.addEventListener('touchmove', preventMapEvents, { passive: true });
             popupEl.addEventListener('touchend', preventMapEvents, { passive: true });
