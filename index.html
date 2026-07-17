@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=yes">
-    <title>지역별 판매점 데이터 통합 복합 검색 필터 시스템 (최적화 버전)</title>
+    <title>지역별 판매점 데이터 통합 복합 검색 필터 시스템 (버그 수정 및 시각화 강화 버전)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <!-- 카카오맵 호출 시 clusterer 라이브러리를 함께 불러옵니다 -->
     <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=47d0f2bd29fbb279cb461bdad2cf1097&libraries=services,clusterer"></script>
     
     <style>
@@ -63,6 +62,34 @@
         .top-gps-msg { font-size: 12px; font-weight: bold; color: #6b21a8; margin-left: 4px; display: inline-block; white-space: nowrap; }
 
         #map { width: 100%; height: 420px; border-radius: 6px; border: 1px solid #d1d5db; }
+
+        /* 내 위치 핀 위에 뜨는 라벨 스타일 */
+        .my-gps-label {
+            position: relative;
+            bottom: 50px;
+            border-radius: 15px;
+            border: 2px solid #ef4444;
+            background-color: #ef4444;
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 4px 10px;
+            text-align: center;
+            white-space: nowrap;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        .my-gps-label::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 6px 6px 0;
+            border-style: solid;
+            border-color: #ef4444 transparent;
+            display: block;
+            width: 0;
+        }
 
         .custom-iw-container {
             background: #ffffff;
@@ -291,7 +318,8 @@ let geocoder = null;
 let placesService = null; 
 let map = null;
 let centerMarker = null;
-let clusterer = null; // 🚀 카카오맵 클러스터러 객체 추가
+let centerOverlay = null; // 🚀 내 위치 라벨 오버레이 추가
+let clusterer = null; 
 let currentOpenedInfoWindow = null; 
 let dragTimeout = null; 
 
@@ -322,22 +350,35 @@ function initMap() {
     geocoder = new kakao.maps.services.Geocoder();
     placesService = new kakao.maps.services.Places(); 
 
-    // 🚀 클러스터러 초기 설정 (마커들이 뭉쳤을 때의 디자인과 기능 정의)
     clusterer = new kakao.maps.MarkerClusterer({
         map: map, 
         averageCenter: true, 
-        minLevel: 6, // 6레벨 이상으로 축소되면 묶어서 표기
-        disableClickZoom: false // 숫자 클릭하면 확대됨
+        minLevel: 6, 
+        disableClickZoom: false 
     });
+
+    // 🚀 [수정] 내 위치 마커를 눈에 띄는 빨간색 전용 핀으로 설정
+    const centerMarkerImage = new kakao.maps.MarkerImage(
+        'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png', // 강렬한 빨간색 마커
+        new kakao.maps.Size(31, 35), 
+        { offset: new kakao.maps.Point(15, 35) }
+    );
 
     centerMarker = new kakao.maps.Marker({
         position: map.getCenter(),
-        image: new kakao.maps.MarkerImage(
-            'https://t1.daumcdn.net/localimg/localimages/07/2018/pc/img/marker_spot.png',
-            new kakao.maps.Size(24, 35), { offset: new kakao.maps.Point(12, 35) }
-        )
+        image: centerMarkerImage,
+        zIndex: 10 // 일반 거래처보다 항상 위에 보이도록 설정
     });
     centerMarker.setMap(map);
+
+    // 🚀 [추가] 내 위치 핀 위에 언제나 떠 있는 "🎯 내 기준 위치" 라벨 오버레이
+    const overlayContent = '<div class="my-gps-label">🎯 내 기준위치</div>';
+    centerOverlay = new kakao.maps.CustomOverlay({
+        position: map.getCenter(),
+        content: overlayContent,
+        yAnchor: 1 // 마커 바로 위에 올라타도록 기준 설정
+    });
+    centerOverlay.setMap(map);
 
     kakao.maps.event.addListener(map, 'dragend', function() {
         if(dragTimeout) clearTimeout(dragTimeout);
@@ -348,10 +389,14 @@ function initMap() {
 }
 
 function updateCenterCoordinates(latlng, message) {
-    if(!map || !centerMarker) return;
+    if(!map || !centerMarker || !centerOverlay) return;
     userCoords.lat = latlng.getLat();
     userCoords.lng = latlng.getLng();
+    
+    // 내 위치 마커와 위에 뜨는 라벨의 위치를 같이 이동시킴
     centerMarker.setPosition(latlng);
+    centerOverlay.setPosition(latlng);
+
     document.getElementById('gps-msg').textContent = message;
     document.getElementById('gps-msg').style.color = "#2563eb";
     recalculateDistances();
@@ -381,10 +426,9 @@ function searchNewLocation() {
     });
 }
 
-// 🚀 클러스터러를 적용해 수천 개가 한번에 렌더링되어도 엄청나게 부드럽습니다.
 function displayStoreMarkersOnMap(data) {
     if (!clusterer) return;
-    clusterer.clear(); // 이전 마커 싹 지우기
+    clusterer.clear(); 
     if (currentOpenedInfoWindow) { currentOpenedInfoWindow.close(); currentOpenedInfoWindow = null; }
     if (!map || data.length === 0) return;
 
@@ -431,7 +475,6 @@ function displayStoreMarkersOnMap(data) {
         });
     });
 
-    // 🚀 생성된 개별 마커 리스트를 클러스터러에 한 번에 주입하여 병목 현상 완벽 방지
     clusterer.addMarkers(newMarkers);
 }
 
@@ -479,7 +522,12 @@ function getUserLocation() {
             function(position) {
                 userCoords = { lat: position.coords.latitude, lng: position.coords.longitude };
                 msgEl.textContent = `✅ GPS 수신 완료`; msgEl.style.color = "#16a34a";
-                if(map) { const newPos = new kakao.maps.LatLng(userCoords.lat, userCoords.lng); map.setCenter(newPos); centerMarker.setPosition(newPos); }
+                if(map) { 
+                    const newPos = new kakao.maps.LatLng(userCoords.lat, userCoords.lng); 
+                    map.setCenter(newPos); 
+                    centerMarker.setPosition(newPos); 
+                    centerOverlay.setPosition(newPos); 
+                }
                 if(csvData.length > 0) { recalculateDistances(); applyFilters(); }
             },
             function() { msgEl.textContent = "❌ GPS 수신실패 (위치 검색을 이용하세요)"; msgEl.style.color = "#ef4444"; if(csvData.length > 0) { recalculateDistances(); applyFilters(); } },
@@ -517,10 +565,21 @@ function parseCSVFile(fileOrBlob) {
     });
 }
 
+// 🚀 [수정 완료] 원본 CSV의 실적 컬럼(수량 및 합계)의 정확한 인덱스 번호를 적용했습니다.
 function processRows(rows) {
     if(!rows || rows.length <= 1) return alert('유효한 데이터가 없습니다.');
     
-    const idxPcode = 1, idxName = 2, idxSido = 3, idxSigungu = 4, idxDong = 5, idxAddress = 6, idxAgency = 7, idxType = 8, idxScore = 9, idxTotalScore = 10;
+    // CSV 내 엑셀 컬럼 매핑 인덱스 (헤더 위치 기준)
+    const idxPcode = 1,     // P코드
+          idxName = 2,      // 거래처명
+          idxSido = 3,      // 시도
+          idxSigungu = 4,   // 시군구
+          idxDong = 5,      // 읍면동
+          idxAddress = 6,   // 상세주소
+          idxAgency = 7,    // 대리점명
+          idxType = 8,      // 중복여부
+          idxScore = 9,     // 실적수량 (대리점실적)
+          idxTotalScore = 10; // 합계수량 (점유율 분모)
 
     pcodeCounts = {};
     csvData = rows.slice(1).map(row => {
@@ -528,8 +587,12 @@ function processRows(rows) {
         const pcodeVal = row[idxPcode].toString().trim();
         pcodeCounts[pcodeVal] = (pcodeCounts[pcodeVal] || 0) + 1;
 
-        const score = parseInt(row[idxScore]?.toString().replace(/,/g, '')) || 0;
-        const total = parseInt(row[idxTotalScore]?.toString().replace(/,/g, '')) || 0;
+        // [오류 디버깅] 쉼표 제거 후 안전하게 숫자로 파싱하도록 수정
+        const rawScore = row[idxScore]?.toString().replace(/,/g, '').trim();
+        const rawTotal = row[idxTotalScore]?.toString().replace(/,/g, '').trim();
+        
+        const score = parseInt(rawScore) || 0;
+        const total = parseInt(rawTotal) || 0;
 
         const sido = row[idxSido]?.trim() || '';
         const sigungu = row[idxSigungu]?.trim() || '';
