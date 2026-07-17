@@ -461,7 +461,6 @@ function initMap() {
     const mapContainer = document.getElementById('map');
     if (!mapContainer || typeof kakao === 'undefined') return;
 
-    // 🎯 [레벨 4 적용 완료] 모바일 시각화 최적화를 위해 기존 level 5에서 4로 기본 확대 배율 변경
     const mapOption = {
         center: new kakao.maps.LatLng(userCoords.lat, userCoords.lng),
         level: 4
@@ -556,8 +555,8 @@ function displayStoreMarkersOnMap(data) {
         coordGroups.get(coordKey).push(store);
     });
 
-    // 🎯 [유지] 지도 마커 노출 최대 200개 제한
-    const uniqueCoords = Array.from(coordGroups.keys()).slice(0, 200);
+    // 🎯 지도 마커 노출 최대 150개 제한으로 변경
+    const uniqueCoords = Array.from(coordGroups.keys()).slice(0, 150);
 
     uniqueCoords.forEach(coordKey => {
         const storesAtCoord = coordGroups.get(coordKey);
@@ -980,8 +979,8 @@ function renderTable(data) {
     data.sort((a, b) => a.distance - b.distance);
     displayStoreMarkersOnMap(data);
 
-    // 🎯 [유지] 하단 리스트 테이블 최대 400개 제한
-    const limitData = data.slice(0, 400); 
+    // 🎯 하단 리스트 테이블 최대 300개 제한으로 변경
+    const limitData = data.slice(0, 300); 
     limitData.forEach(item => {
         const fullAddress = `${item.sido} ${item.sigungu} ${item.address}`.trim();
         const kakaoMapUrl = `https://map.kakao.com/link/search/${encodeURIComponent(fullAddress)}`;
@@ -1029,8 +1028,9 @@ function renderTable(data) {
         `;
     });
 
-    if (data.length > 400) {
-        tbody.innerHTML += `<tr><td colspan="8" style="padding:15px; background:#f3f4f6; color:#4b5563; font-weight:bold;">⚠️ 데이터가 너무 많아 상위 400개만 화면에 표시 중입니다. 필터를 이용해 범위를 좁혀주세요.</td></tr>`;
+    // 🎯 경고 메시지 텍스트 출력 한도 수정 (400개 -> 300개)
+    if (data.length > 300) {
+        tbody.innerHTML += `<tr><td colspan="8" style="padding:15px; background:#f3f4f6; color:#4b5563; font-weight:bold;">⚠️ 데이터가 너무 많아 상위 300개만 화면에 표시 중입니다. 필터를 이용해 범위를 좁혀주세요.</td></tr>`;
     }
 }
 
