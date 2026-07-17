@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=yes">
-    <title>지역별 판매점 데이터 통합 복합 검색 필터 시스템 (버그 수정 및 시각화 강화 버전)</title>
+    <title>지역별 판매점 데이터 통합 복합 검색 필터 시스템 (오류 완벽 수정 버전)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=47d0f2bd29fbb279cb461bdad2cf1097&libraries=services,clusterer"></script>
@@ -157,7 +157,7 @@
         th:nth-child(3), td:nth-child(3) { width: 85px; }  
         th:nth-child(4), td:nth-child(4) { width: auto; }   
         th:nth-child(5), td:nth-child(5) { width: 125px; } 
-        th:nth-child(6), td:nth-child(6) { width: 95px; }  
+        th:nth-child(6), td:nth-child(6) { width: 105px; }  
         th:nth-child(7), td:nth-child(7) { width: 85px; }  
         th:nth-child(8), td:nth-child(8) { width: 105px; } 
 
@@ -181,6 +181,7 @@
         .badge-score { background-color: #e0f2fe; color: #0369a1; }  
         .badge-type { background-color: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db; }
 
+        /* 대리점별 전용 강조 배지 */
         .badge-gj-agency { background-color: #153D64 !important; color: #FFFF00 !important; border: none; }
         .badge-psm-agency { background-color: #FF0000 !important; color: #FFFFFF !important; border: none; }
 
@@ -293,8 +294,8 @@
                         <th>거래처명</th>
                         <th>읍면동</th>
                         <th class="text-left">상세주소 (현재거리)</th>
+                        <th>대리점코드</th>
                         <th>대리점명</th>
-                        <th>중복여부</th>
                         <th>점유비</th>
                         <th>대리점실적</th>
                     </tr>
@@ -318,7 +319,7 @@ let geocoder = null;
 let placesService = null; 
 let map = null;
 let centerMarker = null;
-let centerOverlay = null; // 🚀 내 위치 라벨 오버레이 추가
+let centerOverlay = null; 
 let clusterer = null; 
 let currentOpenedInfoWindow = null; 
 let dragTimeout = null; 
@@ -357,9 +358,8 @@ function initMap() {
         disableClickZoom: false 
     });
 
-    // 🚀 [수정] 내 위치 마커를 눈에 띄는 빨간색 전용 핀으로 설정
     const centerMarkerImage = new kakao.maps.MarkerImage(
-        'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png', // 강렬한 빨간색 마커
+        'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png', 
         new kakao.maps.Size(31, 35), 
         { offset: new kakao.maps.Point(15, 35) }
     );
@@ -367,16 +367,15 @@ function initMap() {
     centerMarker = new kakao.maps.Marker({
         position: map.getCenter(),
         image: centerMarkerImage,
-        zIndex: 10 // 일반 거래처보다 항상 위에 보이도록 설정
+        zIndex: 10 
     });
     centerMarker.setMap(map);
 
-    // 🚀 [추가] 내 위치 핀 위에 언제나 떠 있는 "🎯 내 기준 위치" 라벨 오버레이
     const overlayContent = '<div class="my-gps-label">🎯 내 기준위치</div>';
     centerOverlay = new kakao.maps.CustomOverlay({
         position: map.getCenter(),
         content: overlayContent,
-        yAnchor: 1 // 마커 바로 위에 올라타도록 기준 설정
+        yAnchor: 1 
     });
     centerOverlay.setMap(map);
 
@@ -393,7 +392,6 @@ function updateCenterCoordinates(latlng, message) {
     userCoords.lat = latlng.getLat();
     userCoords.lng = latlng.getLng();
     
-    // 내 위치 마커와 위에 뜨는 라벨의 위치를 같이 이동시킴
     centerMarker.setPosition(latlng);
     centerOverlay.setPosition(latlng);
 
@@ -448,9 +446,9 @@ function displayStoreMarkersOnMap(data) {
 
         group.stores.forEach(s => {
             const nameKey = s.name.trim();
-            if (!mergedStoreMap[nameKey]) mergedStoreMap[nameKey] = { name: nameKey, agencies: [], types: [], totalScore: 0 };
+            if (!mergedStoreMap[nameKey]) mergedStoreMap[nameKey] = { name: nameKey, agencies: [], codes: [], totalScore: 0 };
             if (s.agency && !mergedStoreMap[nameKey].agencies.includes(s.agency)) mergedStoreMap[nameKey].agencies.push(s.agency);
-            if (s.type && !mergedStoreMap[nameKey].types.includes(s.type)) mergedStoreMap[nameKey].types.push(s.type);
+            if (s.pcode && !mergedStoreMap[nameKey].codes.includes(s.pcode)) mergedStoreMap[nameKey].codes.push(s.pcode);
             mergedStoreMap[nameKey].totalScore += s.score;
         });
 
@@ -462,9 +460,8 @@ function displayStoreMarkersOnMap(data) {
             innerHTMLBlocks += `
                 <div class="popup-store-block">
                     <div class="popup-item-row"><span class="label">거래처명</span><span class="value" style="font-weight:bold;">${merged.name}</span></div>
-                    <div class="popup-item-row"><span class="label">대리점명</span><span class="value">${merged.agencies.join(', ') || '정보없음'}</span></div>
-                    <div class="popup-item-row"><span class="label">중복여부</span><span class="value">${merged.types.join(', ')}</span></div>
-                    <div class="popup-item-row"><span class="label">대리점실적</span><span class="value" style="font-weight:bold; color:#2563eb;">${merged.totalScore.toLocaleString()}건</span></div>
+                    <div class="popup-item-row"><span class="label">대리점명</span><span class="value" style="font-weight:bold; color:#1e40af;">${merged.agencies.join(', ') || '정보없음'}</span></div>
+                    <div class="popup-item-row"><span class="label">대리점실적</span><span class="value" style="font-weight:bold; color:#16a34a;">${merged.totalScore.toLocaleString()}건</span></div>
                 </div>`;
         });
 
@@ -565,21 +562,21 @@ function parseCSVFile(fileOrBlob) {
     });
 }
 
-// 🚀 [수정 완료] 원본 CSV의 실적 컬럼(수량 및 합계)의 정확한 인덱스 번호를 적용했습니다.
+// 🛠️ [중요 수정] 이미지 분석을 통해 컬럼의 정확한 인덱스를 재정의했습니다.
 function processRows(rows) {
     if(!rows || rows.length <= 1) return alert('유효한 데이터가 없습니다.');
     
-    // CSV 내 엑셀 컬럼 매핑 인덱스 (헤더 위치 기준)
-    const idxPcode = 1,     // P코드
-          idxName = 2,      // 거래처명
-          idxSido = 3,      // 시도
-          idxSigungu = 4,   // 시군구
-          idxDong = 5,      // 읍면동
-          idxAddress = 6,   // 상세주소
-          idxAgency = 7,    // 대리점명
-          idxType = 8,      // 중복여부
-          idxScore = 9,     // 실적수량 (대리점실적)
-          idxTotalScore = 10; // 합계수량 (점유율 분모)
+    // 테이블 분석 매핑 인덱스
+    const idxPcode = 1,      // P코드 (예: PE8774)
+          idxName = 2,       // 거래처명 (예: 폰메카컴퍼니)
+          idxSido = 3,       // 시도
+          idxSigungu = 4,    // 시군구
+          idxDong = 5,       // 읍면동
+          idxAddress = 6,    // 상세주소
+          idxAgencyCode = 7, // 대리점코드 (예: D15146)
+          idxAgencyName = 8, // 대리점명 (예: PS&M, 광장대리점) -> 기존 코드에서 중복여부로 밀려있던 부분
+          idxScore = 9,      // 대리점실적 (실적 수량) -> 0이 나오던 주범
+          idxTotalScore = 10;// 합계수량 (점유율 분모)
 
     pcodeCounts = {};
     csvData = rows.slice(1).map(row => {
@@ -587,7 +584,7 @@ function processRows(rows) {
         const pcodeVal = row[idxPcode].toString().trim();
         pcodeCounts[pcodeVal] = (pcodeCounts[pcodeVal] || 0) + 1;
 
-        // [오류 디버깅] 쉼표 제거 후 안전하게 숫자로 파싱하도록 수정
+        // 쉼표 제거 후 숫자로 깔끔하게 포맷팅
         const rawScore = row[idxScore]?.toString().replace(/,/g, '').trim();
         const rawTotal = row[idxTotalScore]?.toString().replace(/,/g, '').trim();
         
@@ -602,9 +599,17 @@ function processRows(rows) {
         const cache = coordMap[fullKey] || coordMap[rawAddr] || { lat: 0, lng: 0 };
 
         return {
-            pcode: pcodeVal, name: row[idxName]?.trim() || '', sido: sido, sigungu: sigungu,
-            dong: row[idxDong]?.trim() || '', address: rawAddr, agency: row[idxAgency]?.trim() || '', type: row[idxType]?.trim() || '정보없음',
-            score: score, ratio: total > 0 ? (score / total) * 100 : 0,
+            pcode: pcodeVal, 
+            name: row[idxName]?.trim() || '', 
+            sido: sido, 
+            sigungu: sigungu,
+            dong: row[idxDong]?.trim() || '', 
+            address: rawAddr, 
+            agencyCode: row[idxAgencyCode]?.trim() || '',
+            agency: row[idxAgencyName]?.trim() || '정보없음', // 'PS&M', '광장대리점' 등이 정상 저장됨
+            type: row[idxAgencyName]?.trim() || '정보없음', // 중복 검색 호환용
+            score: score, 
+            ratio: total > 0 ? (score / total) * 100 : 0,
             lat: cache.lat,
             lng: cache.lng,
             distance: 9999
@@ -651,13 +656,25 @@ function renderTable(data) {
 
     data.slice(0, 200).forEach(item => {
         let distTag = item.distance < 9000 ? `<span class="distance-tag">📍 ${item.distance < 1 ? (item.distance * 1000).toFixed(0)+' m' : item.distance.toFixed(2)+' km'}</span>` : "";
-        let bClass = `badge ${item.agency.includes('광장대리점') ? 'badge-gj-agency' : (item.agency.toUpperCase().includes('PS&M') || item.agency.includes('피에스앤마케팅') ? 'badge-psm-agency' : 'badge-type')}`;
+        
+        // 🛠️ 대리점명 텍스트(예: PS&M, 광장대리점)를 직접 검증하여 원래의 예쁜 전용 색상 배지를 입힙니다.
+        let bClass = "badge badge-type";
+        if (item.agency.includes('광장대리점')) {
+            bClass = "badge badge-gj-agency";
+        } else if (item.agency.toUpperCase().includes('PS&M') || item.agency.includes('피에스앤마케팅')) {
+            bClass = "badge badge-psm-agency";
+        }
         
         tbody.innerHTML += `
             <tr ${pcodeCounts[item.pcode] > 1 ? 'class="duplicate-row"' : ''}>
-                <td><b>${item.pcode}</b></td><td title="${item.name}"><b>${item.name}</b></td><td>${item.dong}</td>
+                <td><b>${item.pcode}</b></td>
+                <td title="${item.name}"><b>${item.name}</b></td>
+                <td>${item.dong}</td>
                 <td class="text-left"><a href="https://map.kakao.com/link/search/${encodeURIComponent(item.sido+' '+item.sigungu+' '+item.address)}" target="_blank" class="map-link">📍 ${item.address}</a>${distTag}</td>
-                <td><span class="${bClass}">${item.agency}</span></td><td><span class="badge badge-type">${item.type}</span></td><td><span class="badge badge-score">${item.ratio.toFixed(1)}%</span></td><td><span class="badge badge-total">${item.score.toLocaleString()}</span></td>
+                <td>${item.agencyCode}</td>
+                <td><span class="${bClass}">${item.agency}</span></td>
+                <td><span class="badge badge-score">${item.ratio.toFixed(1)}%</span></td>
+                <td><span class="badge badge-total">${item.score.toLocaleString()}</span></td>
             </tr>`;
     });
     if (data.length > 200) tbody.innerHTML += `<tr><td colspan="8" style="padding:15px; background:#f3f4f6; color:#4b5563; font-weight:bold;">⚠️ 상위 200개만 표시 중입니다. 필터로 범위를 좁혀주세요.</td></tr>`;
